@@ -1,23 +1,27 @@
 # Data Analyse Agent
 
-一个基于 FastAPI、LangChain、LangGraph、Pandas 和 DuckDB 的本地数据分析智能体。
+一个基于 FastAPI、LangChain、LangGraph、Pandas 和 SQLite 的本地数据分析智能体。
 
 用户可以上传 CSV 或 Excel 文件，把多个文件组织为同一个多表数据集，然后通过自然语言让 Agent 生成只读 SQL、执行查询、解释结果、完成数据质量分析并生成图表。项目自带浏览器界面，前端是由 FastAPI 直接托管的原生 HTML/CSS/JavaScript，不需要 Node.js 或 `npm run dev`。
 
-> 本文档描述的是仓库当前已经实现的功能，不包含尚未完成的 SQLite 建库、自动数据清洗和实验报告导出等规划内容。
+> 本文档描述的是仓库当前已经实现的功能，不包含尚未完成的自动数据清洗、主外键配置和实验报告导出等规划内容。
 
 ## 当前功能
 
 - 上传一个或多个 CSV、XLSX、XLS 文件创建数据集。
+- 每个数据集会同时生成独立的 `dataset.sqlite3`，其中包含该数据集的全部表。
+- 原始文件保存在 `raw/` 且不被修改；每张逻辑表在 `processed/` 中保存为独立 CSV。
+- 每个数据集包含标准 `manifest.json`，记录字段统计、清洗历史以及预留的关系和索引配置。
 - 向当前数据集继续追加文件；Excel 的每个 Sheet 会成为一张表。
 - 本地保存、重命名和删除数据集，并可删除数据集中的单张表。
 - 自动识别字段类型、缺失值、样例数据和可供 Agent 使用的 Schema。
-- 使用 DuckDB 对单表或多表数据执行只读 SQL，支持 JOIN、聚合和子查询。
+- 使用 SQLite 只读连接对单表或多表数据执行 SQL，支持 JOIN、聚合和子查询。
 - 使用 LangChain StructuredTool 暴露 SQL、分析和图表工具。
 - 使用 LangGraph 实现 `agent -> tools -> agent -> finish` 工具循环。
 - 使用 SSE 流式展示模型文本、思考状态、工具调用、工具结果和图表。
 - 支持柱状图、折线图、饼图和散点图，生成的 PNG 文件保存在本地。
 - 支持数据概览、缺失值、描述性统计、相关性和 IQR 异常值分析。
+- 支持通过 Agent Tools 生成清洗建议、执行确认后的安全清洗，并从 raw 撤销恢复。
 - 对话以 JSON 保存，可恢复、切换和删除；每个对话绑定一个数据集。
 - 显示上下文窗口估算，并在达到阈值后压缩早期对话。
 
@@ -28,7 +32,8 @@
 | 后端 | Python 3.11、FastAPI、Uvicorn |
 | Agent | LangChain、LangGraph、OpenAI-compatible API |
 | 数据处理 | Pandas、NumPy、SciPy、scikit-learn |
-| SQL 查询 | DuckDB 内存连接 |
+| 数据库存储 | 每个数据集一个 SQLite3 文件 |
+| SQL 查询 | SQLite 只读 URI、query_only、authorizer、超时中断 |
 | 图表 | Matplotlib、Seaborn |
 | 前端 | HTML、CSS、JavaScript、Fetch API、SSE |
 | 持久化 | 本地数据文件、JSON 对话、PNG 图表 |
@@ -38,13 +43,13 @@
 ```text
 上传 CSV / Excel
        ↓
-Pandas 读取文件并生成 Schema
+Pandas 读取文件、生成 Schema 并写入 SQLite
        ↓
 用户输入自然语言问题
        ↓
 LangGraph Agent 选择工具并生成参数
        ↓
-DuckDB 查询 / 数据分析 / 图表生成
+SQLite 只读查询 / 数据分析 / 图表生成
        ↓
 工具结果返回模型
        ↓
@@ -126,7 +131,7 @@ http://127.0.0.1:8000
 4. Agent 会依次展示调用原因、工具卡片、查询结果处理状态和最终回答。
 5. 可在左侧恢复或删除历史对话，也可以切换当前数据集。
 
-单表数据集兼容 `data_table` 别名；多表数据集必须使用 Schema 中的具体表名。包含空格、换行或特殊字符的字段会使用 DuckDB 双引号标识符，例如：
+单表数据集通过 SQLite 视图兼容 `data_table` 别名；多表数据集必须使用 Schema 中的具体表名。包含空格、换行或特殊字符的字段会使用 SQLite 双引号标识符，例如：
 
 ```sql
 SELECT "订单状态", COUNT(*) AS "订单数"
@@ -145,8 +150,25 @@ GROUP BY "订单状态";
 | `descriptive_statistics` | 生成数值和非数值字段描述性统计 |
 | `correlation_analysis` | 计算数值字段相关性及强相关字段对 |
 | `outlier_detection` | 使用 IQR 方法检测异常值 |
+| `suggest_cleaning` | 检查 processed 数据并生成建议，不修改数据 |
+| `apply_cleaning` | 执行用户确认的预定义清洗操作并重建 SQLite |
+| `reset_cleaning` | 从 raw 恢复指定表或整个数据集 |
 
-SQLService 只允许以 `SELECT` 或 `WITH` 开头的单条查询，并阻止写入、建表、加载扩展和直接读取本地文件等操作。返回行数默认受工具参数限制，最高不超过 1000 行。
+`apply_cleaning` 只允许以下预定义操作：
+
+```text
+drop_duplicate_rows
+drop_empty_rows
+drop_empty_columns
+trim_strings
+convert_type
+handle_missing
+sample_rows
+```
+
+推荐对话流程：先说“检查这个数据集并给出清洗建议，不要修改数据”，确认具体表和操作后再要求执行。所有清洗只修改 `processed/`，`raw/` 原件不会改变；执行后 Manifest 会记录操作历史并自动重建 SQLite。
+
+SQLService 使用只读 URI 打开数据库，启用 `PRAGMA query_only=ON` 和 SQLite authorizer。它只允许以 `SELECT` 或 `WITH` 开头的单条查询，限制执行时间，并在数据库层将返回行数限制为最多 1000 行。
 
 ## 本地存储
 
@@ -154,7 +176,11 @@ SQLService 只允许以 `SELECT` 或 `WITH` 开头的单条查询，并阻止写
 app/storage/
 ├── datasets/
 │   ├── metadata.json
-│   └── {dataset_id}/        # 上传的 CSV / Excel
+│   └── {dataset_id}/
+│       ├── raw/             # 上传的原始 CSV / Excel，永不修改
+│       ├── processed/       # 每张逻辑表对应的当前 CSV
+│       ├── manifest.json    # 字段、清洗、关系和索引配置
+│       └── dataset.sqlite3  # 从 processed 数据构建
 ├── conversations/
 │   └── {conversation_id}.json
 └── charts/
@@ -172,6 +198,7 @@ app/storage/
 | `GET` | `/api/datasets` | 获取本地数据集列表 |
 | `POST` | `/api/upload` | 上传一个或多个文件创建数据集，表单字段为 `files` |
 | `GET` | `/api/datasets/{dataset_id}` | 获取数据集 Schema 和表信息 |
+| `GET` | `/api/datasets/{dataset_id}/manifest` | 获取数据集 Manifest |
 | `PATCH` | `/api/datasets/{dataset_id}` | 重命名数据集 |
 | `DELETE` | `/api/datasets/{dataset_id}` | 删除数据集及本地文件 |
 | `POST` | `/api/datasets/{dataset_id}/tables` | 追加文件或数据表 |
@@ -254,6 +281,18 @@ python scripts/test_llm_api.py --list-models --timeout 60
 python scripts/test_chat_api.py --stream --timeout 180
 ```
 
+为旧数据集生成缺失的 SQLite 文件并检查每张表的行数：
+
+```powershell
+python scripts/materialize_sqlite.py
+```
+
+强制重新构建已有 SQLite 文件：
+
+```powershell
+python scripts/materialize_sqlite.py --rebuild
+```
+
 如果 `pytest` 在 Windows 上提示无法写入 `.pytest_cache`，但测试结果仍为 `passed`，通常只是缓存目录权限警告，不影响测试本身。
 
 ## 项目结构
@@ -264,6 +303,7 @@ python scripts/test_chat_api.py --stream --timeout 180
 │   ├── agent/               # LangGraph、提示词、模型和工具
 │   ├── api/                 # 数据集、聊天和对话 API
 │   ├── services/            # 数据、SQL、分析、图表和上下文服务
+│   ├── schemas/             # Manifest 等结构化数据契约
 │   ├── storage/             # 本地数据、对话和图表
 │   └── main.py
 ├── frontend/
@@ -271,6 +311,7 @@ python scripts/test_chat_api.py --stream --timeout 180
 │   ├── style.css
 │   └── app.js
 ├── scripts/
+│   ├── materialize_sqlite.py
 │   ├── test_chat_api.py
 │   └── test_llm_api.py
 ├── src/data_analyse_agent/  # CLI 和基础配置
@@ -283,12 +324,12 @@ python scripts/test_chat_api.py --stream --timeout 180
 
 ## 当前限制
 
-- 当前查询层使用 DuckDB 内存连接，不是 SQLite、MySQL 或 PostgreSQL 持久化关系数据库。
-- 上传阶段只负责读取、识别和保存文件，不会自动去重、填补缺失值或转换业务字段类型。
+- SQLite 已经成为 Agent 的正式只读查询后端，但当前自动建库还没有业务主键、外键和索引配置。
+- 清洗 Tools 只提供预定义操作，不支持任意 Python、自定义表达式或复杂业务清洗脚本。
 - SQL 安全校验以应用层规则为主，不应作为面向不可信公网用户的完整安全边界。
 - 上传文件会先读入内存，大文件会增加内存占用和处理时间。
 - 项目没有用户认证和权限隔离，当前定位是本地单用户开发与实验环境。
 - 上下文 Token 数量是近似估算，压缩过程还会产生额外模型调用。
-- 自动测试目前主要覆盖项目烟雾检查和工具原因生成，尚未完整覆盖上传、SQL、Agent 和图表流程。
+- 自动测试已覆盖 SQLite 建库、单表别名、多表 JOIN、只读安全、查询超时、清洗建议、应用与重置、类型持久化和工具原因生成；上传 API、完整 Agent 和图表流程仍需继续补充。
 
 如用于数据库课程实验，还需要补充公开数据来源说明、可复现的数据清洗脚本、SQLite/MySQL/PostgreSQL 建库与导入脚本、主外键和索引、业务案例截图及实验报告。

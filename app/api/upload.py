@@ -36,6 +36,14 @@ def get_dataset(dataset_id: str) -> dict:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
 
+@router.get("/datasets/{dataset_id}/manifest")
+def get_dataset_manifest(dataset_id: str) -> dict:
+    try:
+        return dataset_service.get_manifest(dataset_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
 @router.patch("/datasets/{dataset_id}")
 def rename_dataset(dataset_id: str, payload: RenameDatasetRequest) -> dict:
     try:

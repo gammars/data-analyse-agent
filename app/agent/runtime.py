@@ -210,6 +210,14 @@ def _build_tool_reason(tool_name: str, tool_args: dict) -> str:
     if tool_name == "profile_data":
         return "我需要调用 profile_data，因为用户需要整体数据质量和结构概览。"
 
+    cleaning_reasons = {
+        "suggest_cleaning": "我先检查 processed 数据中的质量问题并生成建议，不会修改数据。",
+        "apply_cleaning": "用户已确认清洗方案，我将更新 processed 数据并重建 SQLite。",
+        "reset_cleaning": "用户要求撤销清洗，我将从 raw 原件恢复 processed 数据。",
+    }
+    if tool_name in cleaning_reasons:
+        return cleaning_reasons[tool_name]
+
     analysis_tools = {
         "missing_value_analysis": "缺失值情况",
         "descriptive_statistics": "描述性统计",

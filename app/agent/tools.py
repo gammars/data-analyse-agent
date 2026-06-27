@@ -5,7 +5,14 @@ from langchain_core.tools import StructuredTool
 
 from app.services.analysis_service import AnalysisService
 from app.services.chart_service import ChartService
+from app.services.preprocessing_service import PreprocessingService
 from app.services.sql_service import SQLService
+from app.schemas.preprocessing import (
+    ApplyCleaningArgs,
+    CleaningOperation,
+    ResetCleaningArgs,
+    SuggestCleaningArgs,
+)
 
 
 class QueryDataArgs(BaseModel):
@@ -13,7 +20,7 @@ class QueryDataArgs(BaseModel):
     sql: str = Field(
         ...,
         description=(
-            "只允许 SELECT / WITH 查询。必须使用当前 schema 中列出的 SQL表名和字段 SQL引用；"
+            "只允许 SQLite SELECT / WITH 查询。必须使用当前 schema 中列出的 SQL表名和字段 SQL引用；"
             "多表数据集不能使用 data_table。"
         ),
     )
@@ -22,7 +29,7 @@ class QueryDataArgs(BaseModel):
 
 class GenerateChartArgs(BaseModel):
     dataset_id: str = Field(..., description="数据集 ID")
-    sql: str = Field(..., description="用于生成图表数据的 SELECT / WITH SQL；多表时使用 schema 中的 SQL表名")
+    sql: str = Field(..., description="用于生成图表数据的 SQLite SELECT / WITH SQL；多表时使用 schema 中的 SQL表名")
     chart_type: str = Field(..., description="图表类型：bar、line、pie、scatter")
     x: str = Field(..., description="SQL 查询结果中作为 x 轴、分类标签或饼图标签的字段名")
     y: str = Field(..., description="SQL 查询结果中作为 y 轴、数值或饼图数值的字段名")
@@ -46,7 +53,7 @@ def make_query_data_tool(sql_service: SQLService) -> StructuredTool:
             return (
                 "SQL 查询执行失败："
                 f"{exc}\n"
-                "请检查是否使用了 schema 中的具体 SQL表名和字段 SQL引用写法，并修正 SQL 后重试。"
+                "请检查 SQLite 方言、schema 中的具体 SQL表名和字段 SQL引用写法，并修正后重试。"
             )
 
         if result.empty:
@@ -57,7 +64,7 @@ def make_query_data_tool(sql_service: SQLService) -> StructuredTool:
     return StructuredTool.from_function(
         name="query_data",
         description=(
-            "对上传数据集执行安全 SQL 查询。数据集可包含多张表；"
+            "对上传数据集的 SQLite 数据库执行安全只读查询。数据集可包含多张表；"
             "请使用 schema 中给出的 SQL表名和字段 SQL引用。多表数据集不能使用 data_table。"
         ),
         func=_run,
@@ -128,6 +135,83 @@ def make_outlier_detection_tool(analysis_service: AnalysisService) -> Structured
     )
 
 
+def make_suggest_cleaning_tool(
+    preprocessing_service: PreprocessingService,
+) -> StructuredTool:
+    def _run(dataset_id: str, table_name: str | None = None) -> str:
+        try:
+            result = preprocessing_service.suggest_cleaning(dataset_id, table_name)
+        except Exception as exc:
+            return f"生成清洗建议失败：{exc}"
+        return json.dumps(result, ensure_ascii=False)
+
+    return StructuredTool.from_function(
+        name="suggest_cleaning",
+        description=(
+            "只检查 processed 数据并生成清洗建议，不修改任何数据。"
+            "用户要求检查数据质量、提出清洗方案或尚未明确确认修改时优先调用。"
+        ),
+        func=_run,
+        args_schema=SuggestCleaningArgs,
+    )
+
+
+def make_apply_cleaning_tool(
+    preprocessing_service: PreprocessingService,
+) -> StructuredTool:
+    def _run(
+        dataset_id: str,
+        table_name: str,
+        operations: list[CleaningOperation | dict],
+    ) -> str:
+        try:
+            validated_operations = [
+                operation
+                if isinstance(operation, CleaningOperation)
+                else CleaningOperation.model_validate(operation)
+                for operation in operations
+            ]
+            result = preprocessing_service.apply_cleaning(
+                dataset_id,
+                table_name,
+                validated_operations,
+            )
+        except Exception as exc:
+            return f"执行数据清洗失败：{exc}"
+        return json.dumps(result, ensure_ascii=False)
+
+    return StructuredTool.from_function(
+        name="apply_cleaning",
+        description=(
+            "按顺序执行经过用户明确确认的安全清洗操作，只修改 processed 数据，"
+            "随后更新 manifest 并重建 SQLite；绝不修改 raw 原件。"
+        ),
+        func=_run,
+        args_schema=ApplyCleaningArgs,
+    )
+
+
+def make_reset_cleaning_tool(
+    preprocessing_service: PreprocessingService,
+) -> StructuredTool:
+    def _run(dataset_id: str, table_name: str | None = None) -> str:
+        try:
+            result = preprocessing_service.reset_cleaning(dataset_id, table_name)
+        except Exception as exc:
+            return f"恢复原始数据失败：{exc}"
+        return json.dumps(result, ensure_ascii=False)
+
+    return StructuredTool.from_function(
+        name="reset_cleaning",
+        description=(
+            "将指定表或整个数据集的 processed 数据恢复为 raw 原始状态，"
+            "清空对应清洗历史并重建 SQLite。"
+        ),
+        func=_run,
+        args_schema=ResetCleaningArgs,
+    )
+
+
 def make_generate_chart_tool(sql_service: SQLService, chart_service: ChartService) -> StructuredTool:
     def _run(
         dataset_id: str,
@@ -181,6 +265,7 @@ def build_tools(
     chart_service: ChartService,
     analysis_service: AnalysisService,
 ) -> list[StructuredTool]:
+    preprocessing_service = PreprocessingService(analysis_service.dataset_service)
     return [
         make_query_data_tool(sql_service),
         make_profile_data_tool(analysis_service),
@@ -188,5 +273,8 @@ def build_tools(
         make_descriptive_statistics_tool(analysis_service),
         make_correlation_analysis_tool(analysis_service),
         make_outlier_detection_tool(analysis_service),
+        make_suggest_cleaning_tool(preprocessing_service),
+        make_apply_cleaning_tool(preprocessing_service),
+        make_reset_cleaning_tool(preprocessing_service),
         make_generate_chart_tool(sql_service, chart_service),
     ]
