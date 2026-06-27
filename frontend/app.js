@@ -1,0 +1,1130 @@
+const form = document.querySelector("#upload-form");
+const fileInput = document.querySelector("#file-input");
+const uploadDatasetButton = document.querySelector("#upload-dataset-button");
+const appendTableForm = document.querySelector("#append-table-form");
+const appendFileInput = document.querySelector("#append-file-input");
+const appendDatasetButton = document.querySelector("#append-dataset-button");
+const statusBox = document.querySelector("#status");
+const summary = document.querySelector("#summary");
+const columnsBody = document.querySelector("#columns-body");
+const tableList = document.querySelector("#table-list");
+const chatForm = document.querySelector("#chat-form");
+const questionInput = document.querySelector("#question-input");
+const chatLog = document.querySelector("#chat-log");
+const datasetSelect = document.querySelector("#dataset-select");
+const renameDatasetButton = document.querySelector("#rename-dataset-button");
+const deleteDatasetButton = document.querySelector("#delete-dataset-button");
+const conversationSelect = document.querySelector("#conversation-select");
+const conversationList = document.querySelector("#conversation-list");
+const newConversationButton = document.querySelector("#new-conversation-button");
+const contextTokenLabel = document.querySelector("#context-token-label");
+const contextPercentLabel = document.querySelector("#context-percent-label");
+const contextBarFill = document.querySelector("#context-bar-fill");
+const contextHint = document.querySelector("#context-hint");
+
+let currentDatasetId = null;
+let currentConversationId = null;
+let datasets = [];
+let conversations = [];
+let pendingToolCards = new Map();
+let thinkingMessage = null;
+
+function showStatus(message, isError = false) {
+  statusBox.hidden = false;
+  statusBox.textContent = message;
+  statusBox.classList.toggle("error", isError);
+}
+
+function formatErrorDetail(detail, fallback) {
+  if (!detail) {
+    return fallback;
+  }
+  if (typeof detail === "string") {
+    return detail;
+  }
+  return JSON.stringify(detail, null, 2);
+}
+
+async function fetchJson(url, options = {}) {
+  const response = await fetch(url, options);
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(formatErrorDetail(data.detail, "请求失败"));
+  }
+  return data;
+}
+
+function renderDataset(data, resetChat = true) {
+  currentDatasetId = data.dataset_id;
+  datasetSelect.value = data.dataset_id;
+  document.querySelector("#dataset-id").textContent = data.dataset_id;
+  document.querySelector("#filename").textContent = data.filename;
+  document.querySelector("#table-count").textContent = data.table_count || 1;
+  document.querySelector("#row-count").textContent = data.row_count;
+  document.querySelector("#column-count").textContent = data.column_count;
+  document.querySelector("#schema").textContent = data.schema;
+
+  columnsBody.replaceChildren(
+    ...data.columns.map((column) => {
+      const row = document.createElement("tr");
+      const nameCell = document.createElement("td");
+      const dtypeCell = document.createElement("td");
+      const missingCell = document.createElement("td");
+
+      nameCell.textContent = column.name;
+      dtypeCell.textContent = column.dtype;
+      missingCell.textContent = column.missing_count;
+
+      row.append(nameCell, dtypeCell, missingCell);
+      return row;
+    }),
+  );
+
+  renderTableList(data.tables || []);
+
+  summary.hidden = false;
+  if (resetChat) {
+    chatLog.hidden = true;
+    chatLog.replaceChildren();
+  }
+}
+
+function renderTableList(tables) {
+  tableList.replaceChildren(
+    ...tables.map((table) => {
+      const item = document.createElement("article");
+      item.className = "table-item";
+
+      const title = document.createElement("div");
+      title.className = "table-item-title";
+      title.textContent = table.table_name;
+
+      const meta = document.createElement("div");
+      meta.className = "table-item-meta";
+      const source = table.sheet_name ? `${table.filename} / ${table.sheet_name}` : table.filename;
+      meta.textContent = `${table.row_count} 行 · ${table.column_count} 列 · ${source}`;
+
+      const sqlName = document.createElement("code");
+      sqlName.textContent = table.sql_name || `"${table.table_name}"`;
+
+      const actions = document.createElement("div");
+      actions.className = "table-item-actions";
+
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.className = "danger-button compact-button";
+      deleteButton.textContent = "删除表";
+      deleteButton.disabled = tables.length <= 1;
+      deleteButton.title = tables.length <= 1 ? "数据集至少需要保留一张表" : `删除 ${table.table_name}`;
+      deleteButton.addEventListener("click", async () => {
+        await deleteDatasetTable(table.table_name);
+      });
+
+      actions.append(deleteButton);
+      item.append(title, meta, sqlName, actions);
+      return item;
+    }),
+  );
+}
+
+function getCurrentDataset() {
+  return datasets.find((dataset) => dataset.dataset_id === currentDatasetId) || null;
+}
+
+function selectedFiles(input) {
+  return Array.from(input.files || []);
+}
+
+async function refreshDatasets(selectedDatasetId = currentDatasetId) {
+  const data = await fetchJson("/api/datasets");
+  datasets = data.datasets || [];
+
+  datasetSelect.replaceChildren(
+    ...[
+      new Option(datasets.length ? "选择数据集" : "暂无数据集", ""),
+      ...datasets.map(
+        (dataset) =>
+          new Option(
+            `${dataset.filename} (${dataset.table_count || 1}表)`,
+            dataset.dataset_id,
+          ),
+      ),
+    ],
+  );
+
+  if (selectedDatasetId && datasets.some((dataset) => dataset.dataset_id === selectedDatasetId)) {
+    datasetSelect.value = selectedDatasetId;
+  }
+}
+
+async function refreshConversations(selectedConversationId = currentConversationId) {
+  const data = await fetchJson("/api/conversations");
+  conversations = data.conversations || [];
+
+  conversationSelect.replaceChildren(
+    new Option("新对话", ""),
+    ...conversations.map((conversation) => {
+      const dataset = datasets.find((item) => item.dataset_id === conversation.dataset_id);
+      const suffix = dataset ? ` · ${dataset.filename}` : "";
+      return new Option(`${conversation.title}${suffix}`, conversation.conversation_id);
+    }),
+  );
+
+  if (
+    selectedConversationId &&
+    conversations.some((conversation) => conversation.conversation_id === selectedConversationId)
+  ) {
+    conversationSelect.value = selectedConversationId;
+  }
+  const activeConversation = conversations.find(
+    (conversation) => conversation.conversation_id === currentConversationId,
+  );
+  if (activeConversation) {
+    updateContextMeter(activeConversation.context);
+  }
+  renderConversationList();
+}
+
+function renderConversationList() {
+  conversationList.replaceChildren(
+    ...conversations.map((conversation) => {
+      const dataset = datasets.find((item) => item.dataset_id === conversation.dataset_id);
+      const row = document.createElement("div");
+      row.className = "conversation-row";
+
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "conversation-item";
+      button.classList.toggle("active", conversation.conversation_id === currentConversationId);
+      button.dataset.conversationId = conversation.conversation_id;
+
+      const title = document.createElement("span");
+      title.className = "conversation-title";
+      title.textContent = conversation.title || "新对话";
+
+      const meta = document.createElement("span");
+      meta.className = "conversation-meta";
+      meta.textContent = dataset
+        ? `${dataset.filename} · ${conversation.message_count}条`
+        : `${conversation.message_count}条`;
+
+      button.append(title, meta);
+      button.addEventListener("click", async () => {
+        try {
+          await loadConversation(conversation.conversation_id);
+          showStatus("对话已恢复。");
+        } catch (error) {
+          showStatus(error.message, true);
+        }
+      });
+
+      const deleteButton = document.createElement("button");
+      deleteButton.type = "button";
+      deleteButton.className = "conversation-delete-button";
+      deleteButton.textContent = "删除";
+      deleteButton.title = `删除对话：${conversation.title || "新对话"}`;
+      deleteButton.setAttribute("aria-label", deleteButton.title);
+      deleteButton.addEventListener("click", async () => {
+        await deleteConversation(conversation);
+      });
+
+      row.append(button, deleteButton);
+      return row;
+    }),
+  );
+}
+
+async function deleteConversation(conversation) {
+  const title = conversation.title || "新对话";
+  if (!window.confirm(`确定删除对话「${title}」吗？此操作无法撤销。`)) {
+    return;
+  }
+
+  const isActive = conversation.conversation_id === currentConversationId;
+  try {
+    await fetchJson(`/api/conversations/${conversation.conversation_id}`, {
+      method: "DELETE",
+    });
+
+    if (isActive) {
+      currentConversationId = null;
+      conversationSelect.value = "";
+      chatLog.hidden = true;
+      chatLog.replaceChildren();
+      pendingToolCards = new Map();
+      thinkingMessage = null;
+      updateContextMeter(null);
+    }
+
+    await refreshConversations(isActive ? "" : currentConversationId);
+    showStatus("对话已删除。");
+  } catch (error) {
+    showStatus(error.message, true);
+  }
+}
+
+function updateContextMeter(context) {
+  if (!context) {
+    contextTokenLabel.textContent = "0 / 0 tokens";
+    contextPercentLabel.textContent = "0%";
+    contextBarFill.style.width = "0%";
+    contextBarFill.classList.remove("warning");
+    contextHint.textContent = "暂无对话上下文";
+    return;
+  }
+
+  const estimated = context.estimated_tokens || 0;
+  const limit = context.context_limit_tokens || 0;
+  const percent = limit ? Math.min(100, Math.round((estimated / limit) * 100)) : 0;
+  const threshold = Math.round((context.compact_threshold || 0.8) * 100);
+
+  contextTokenLabel.textContent = `${estimated} / ${limit} tokens`;
+  contextPercentLabel.textContent = `${percent}%`;
+  contextBarFill.style.width = `${percent}%`;
+  contextBarFill.classList.toggle("warning", percent >= threshold);
+  contextHint.textContent = `压缩阈值 ${threshold}% · 摘要约 ${context.summary_tokens || 0} tokens`;
+}
+
+async function loadDataset(datasetId, clearConversation = true) {
+  if (!datasetId) {
+    currentDatasetId = null;
+    summary.hidden = true;
+    chatLog.hidden = true;
+    chatLog.replaceChildren();
+    return;
+  }
+  const data = await fetchJson(`/api/datasets/${datasetId}`);
+  renderDataset(data, clearConversation);
+  if (clearConversation) {
+    currentConversationId = null;
+    conversationSelect.value = "";
+    updateContextMeter(null);
+  }
+}
+
+async function loadConversation(conversationId) {
+  if (!conversationId) {
+    currentConversationId = null;
+    chatLog.hidden = true;
+    chatLog.replaceChildren();
+    return;
+  }
+
+  const conversation = await fetchJson(`/api/conversations/${conversationId}`);
+  currentConversationId = conversation.conversation_id;
+  conversationSelect.value = conversation.conversation_id;
+  await loadDataset(conversation.dataset_id, false);
+  updateContextMeter(conversation.context);
+  renderConversationMessages(conversation.messages || []);
+  renderConversationList();
+}
+
+function renderConversationMessages(messages) {
+  chatLog.replaceChildren();
+  pendingToolCards = new Map();
+  thinkingMessage = null;
+  chatLog.hidden = messages.length === 0;
+
+  for (const message of messages) {
+    if (message.role === "user") {
+      appendChatMessage("user", message.content || "");
+    } else if (message.role === "assistant") {
+      appendChatMessage("assistant", message.content || "");
+    } else if (message.role === "tool") {
+      if (message.type === "tool_start") {
+        createToolCard(message.name, message.args || {});
+      } else {
+        completeToolCard(message.name, message.args || {}, parseToolResult(message.result || ""));
+      }
+    } else if (message.role === "chart") {
+      appendChartMessage(message);
+    }
+  }
+}
+
+uploadDatasetButton.addEventListener("click", () => {
+  fileInput.value = "";
+  fileInput.click();
+});
+
+fileInput.addEventListener("change", () => {
+  if (selectedFiles(fileInput).length) {
+    form.requestSubmit();
+  }
+});
+
+appendDatasetButton.addEventListener("click", () => {
+  if (!currentDatasetId) {
+    showStatus("请先选择一个数据集。", true);
+    return;
+  }
+  appendFileInput.value = "";
+  appendFileInput.click();
+});
+
+appendFileInput.addEventListener("change", () => {
+  if (selectedFiles(appendFileInput).length) {
+    appendTableForm.requestSubmit();
+  }
+});
+
+form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const files = selectedFiles(fileInput);
+  if (!files.length) {
+    showStatus("请选择一个或多个 CSV / Excel 文件。", true);
+    return;
+  }
+
+  const formData = new FormData();
+  for (const file of files) {
+    formData.append("files", file);
+  }
+
+  const button = form.querySelector("button");
+  button.disabled = true;
+  showStatus(`正在上传并解析 ${files.length} 个文件...`);
+
+  try {
+    const data = await fetchJson("/api/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    currentConversationId = null;
+    renderDataset(data);
+    await refreshDatasets(data.dataset_id);
+    await refreshConversations("");
+    showStatus("上传成功，数据集结构已生成。");
+  } catch (error) {
+    summary.hidden = true;
+    showStatus(error.message, true);
+  } finally {
+    button.disabled = false;
+    fileInput.value = "";
+  }
+});
+
+appendTableForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  if (!currentDatasetId) {
+    showStatus("请先选择一个数据集。", true);
+    return;
+  }
+
+  const files = selectedFiles(appendFileInput);
+  if (!files.length) {
+    showStatus("请选择要追加的一个或多个数据文件。", true);
+    return;
+  }
+
+  const formData = new FormData();
+  for (const file of files) {
+    formData.append("files", file);
+  }
+
+  const button = appendTableForm.querySelector("button");
+  button.disabled = true;
+  showStatus(`正在追加 ${files.length} 个文件的数据表...`);
+
+  try {
+    const data = await fetchJson(`/api/datasets/${currentDatasetId}/tables`, {
+      method: "POST",
+      body: formData,
+    });
+
+    renderDataset(data);
+    await refreshDatasets(data.dataset_id);
+    showStatus("数据表已追加，schema 已更新。");
+  } catch (error) {
+    showStatus(error.message, true);
+  } finally {
+    button.disabled = false;
+    appendFileInput.value = "";
+  }
+});
+
+renameDatasetButton.addEventListener("click", async () => {
+  if (!currentDatasetId) {
+    showStatus("请先选择一个数据集。", true);
+    return;
+  }
+
+  const currentDataset = getCurrentDataset();
+  const nextName = window.prompt("输入新的数据集名称", currentDataset?.filename || "");
+  if (nextName === null) {
+    return;
+  }
+
+  const cleanName = nextName.trim();
+  if (!cleanName) {
+    showStatus("数据集名称不能为空。", true);
+    return;
+  }
+
+  try {
+    const data = await fetchJson(`/api/datasets/${currentDatasetId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name: cleanName }),
+    });
+    renderDataset(data, false);
+    await refreshDatasets(data.dataset_id);
+    await refreshConversations(currentConversationId);
+    showStatus("数据集已重命名。");
+  } catch (error) {
+    showStatus(error.message, true);
+  }
+});
+
+deleteDatasetButton.addEventListener("click", async () => {
+  if (!currentDatasetId) {
+    showStatus("请先选择一个数据集。", true);
+    return;
+  }
+
+  const currentDataset = getCurrentDataset();
+  const label = currentDataset?.filename || currentDatasetId;
+  if (!window.confirm(`确定删除数据集「${label}」吗？这个操作会删除本地保存的数据文件。`)) {
+    return;
+  }
+
+  try {
+    await fetchJson(`/api/datasets/${currentDatasetId}`, {
+      method: "DELETE",
+    });
+    currentDatasetId = null;
+    currentConversationId = null;
+    summary.hidden = true;
+    chatLog.hidden = true;
+    chatLog.replaceChildren();
+    updateContextMeter(null);
+    await refreshDatasets("");
+    await refreshConversations("");
+    if (datasets.length) {
+      await loadDataset(datasets[0].dataset_id);
+    }
+    showStatus("数据集已删除。");
+  } catch (error) {
+    showStatus(error.message, true);
+  }
+});
+
+async function deleteDatasetTable(tableName) {
+  if (!currentDatasetId) {
+    showStatus("请先选择一个数据集。", true);
+    return;
+  }
+  if (!window.confirm(`确定删除数据表「${tableName}」吗？`)) {
+    return;
+  }
+
+  try {
+    const data = await fetchJson(
+      `/api/datasets/${currentDatasetId}/tables/${encodeURIComponent(tableName)}`,
+      {
+        method: "DELETE",
+      },
+    );
+    renderDataset(data, false);
+    await refreshDatasets(data.dataset_id);
+    showStatus("数据表已删除，schema 已更新。");
+  } catch (error) {
+    showStatus(error.message, true);
+  }
+}
+
+chatForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  if (!currentDatasetId) {
+    showStatus("请先上传数据文件。", true);
+    return;
+  }
+
+  const message = questionInput.value.trim();
+  if (!message) {
+    showStatus("请输入分析问题。", true);
+    return;
+  }
+
+  const button = chatForm.querySelector("button");
+  button.disabled = true;
+  chatLog.hidden = false;
+  appendChatMessage("user", message);
+  questionInput.value = "";
+  let assistantContent = null;
+  showStatus("Agent 正在流式处理...");
+
+  try {
+    const response = await fetch("/api/chat/stream", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        dataset_id: currentConversationId ? undefined : currentDatasetId,
+        conversation_id: currentConversationId,
+        message,
+      }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(formatErrorDetail(data.detail, "查询失败"));
+    }
+
+    await readSseStream(response, (eventData) => {
+      assistantContent = handleChatEvent(eventData, assistantContent);
+    });
+    await refreshConversations(currentConversationId);
+    showStatus("查询完成。");
+  } catch (error) {
+    showStatus(error.message, true);
+  } finally {
+    button.disabled = false;
+  }
+});
+
+datasetSelect.addEventListener("change", async () => {
+  try {
+    await loadDataset(datasetSelect.value);
+    showStatus("数据集已切换。");
+  } catch (error) {
+    showStatus(error.message, true);
+  }
+});
+
+conversationSelect.addEventListener("change", async () => {
+  try {
+    await loadConversation(conversationSelect.value);
+    showStatus(conversationSelect.value ? "对话已恢复。" : "已切换为新对话。");
+  } catch (error) {
+    showStatus(error.message, true);
+  }
+});
+
+newConversationButton.addEventListener("click", async () => {
+  currentConversationId = null;
+  conversationSelect.value = "";
+  chatLog.hidden = true;
+  chatLog.replaceChildren();
+  updateContextMeter(null);
+  pendingToolCards = new Map();
+  renderConversationList();
+  showStatus("已准备新对话，发送第一条消息后会自动保存。");
+});
+
+function appendChatMessage(role, content) {
+  if (role !== "thinking") {
+    clearThinkingMessage();
+  }
+
+  const message = document.createElement("div");
+  message.className = `chat-message ${role}`;
+
+  const label = document.createElement("div");
+  label.className = "message-label";
+  label.textContent = role === "user" ? "你" : "Agent";
+
+  const body = document.createElement("div");
+  body.className = "message-body";
+  if (role === "assistant") {
+    body.classList.add("markdown-body");
+    body.dataset.markdown = content;
+    renderMarkdown(body, content);
+  } else {
+    body.textContent = content;
+  }
+
+  message.append(label, body);
+  chatLog.append(message);
+  chatLog.scrollTop = chatLog.scrollHeight;
+  return body;
+}
+
+function setThinkingMessage(content) {
+  chatLog.hidden = false;
+  if (!thinkingMessage) {
+    thinkingMessage = document.createElement("div");
+    thinkingMessage.className = "chat-message thinking";
+
+    const label = document.createElement("div");
+    label.className = "message-label";
+    label.textContent = "Agent";
+
+    const body = document.createElement("div");
+    body.className = "message-body thinking-body";
+
+    const dot = document.createElement("span");
+    dot.className = "thinking-dot";
+    dot.setAttribute("aria-hidden", "true");
+
+    const text = document.createElement("span");
+    text.className = "thinking-text";
+
+    body.append(dot, text);
+    thinkingMessage.append(label, body);
+    chatLog.append(thinkingMessage);
+  }
+
+  thinkingMessage.querySelector(".thinking-text").textContent = content;
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+function clearThinkingMessage() {
+  if (!thinkingMessage) {
+    return;
+  }
+  thinkingMessage.remove();
+  thinkingMessage = null;
+}
+
+function renderMarkdown(target, markdown) {
+  target.innerHTML = markdownToHtml(markdown);
+}
+
+function markdownToHtml(markdown) {
+  const lines = escapeHtml(normalizeMarkdown(markdown)).split(/\r?\n/);
+  const blocks = [];
+  let paragraph = [];
+  let listItems = [];
+  let tableLines = [];
+
+  function flushParagraph() {
+    if (!paragraph.length) {
+      return;
+    }
+    blocks.push(`<p>${renderInlineMarkdown(paragraph.join(" "))}</p>`);
+    paragraph = [];
+  }
+
+  function flushList() {
+    if (!listItems.length) {
+      return;
+    }
+    blocks.push(`<ul>${listItems.map((item) => `<li>${renderInlineMarkdown(item)}</li>`).join("")}</ul>`);
+    listItems = [];
+  }
+
+  function flushTable() {
+    if (!tableLines.length) {
+      return;
+    }
+    const table = renderMarkdownTable(tableLines);
+    if (table) {
+      blocks.push(table);
+    } else {
+      paragraph.push(...tableLines);
+    }
+    tableLines = [];
+  }
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      flushTable();
+      flushList();
+      flushParagraph();
+      continue;
+    }
+
+    if (trimmed.includes("|")) {
+      flushList();
+      flushParagraph();
+      tableLines.push(trimmed);
+      continue;
+    }
+
+    flushTable();
+
+    const headingMatch = trimmed.match(/^(#{1,4})\s+(.+)$/);
+    if (headingMatch) {
+      flushList();
+      flushParagraph();
+      const level = headingMatch[1].length;
+      blocks.push(`<h${level}>${renderInlineMarkdown(headingMatch[2])}</h${level}>`);
+      continue;
+    }
+
+    const listMatch = trimmed.match(/^[-*]\s+(.+)$/);
+    if (listMatch) {
+      flushParagraph();
+      listItems.push(listMatch[1]);
+      continue;
+    }
+
+    const orderedListMatch = trimmed.match(/^\d+\.\s+(.+)$/);
+    if (orderedListMatch) {
+      flushParagraph();
+      listItems.push(orderedListMatch[1]);
+      continue;
+    }
+
+    flushList();
+    paragraph.push(trimmed);
+  }
+
+  flushTable();
+  flushList();
+  flushParagraph();
+
+  return blocks.join("");
+}
+
+function renderMarkdownTable(lines) {
+  if (lines.length < 2 || !/^\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)+\|?$/.test(lines[1])) {
+    return null;
+  }
+
+  const rows = lines
+    .filter((_, index) => index !== 1)
+    .map((line) =>
+      line
+        .replace(/^\|/, "")
+        .replace(/\|$/, "")
+        .split("|")
+        .map((cell) => cell.trim()),
+    );
+
+  const [headers, ...bodyRows] = rows;
+  const thead = `<thead><tr>${headers
+    .map((header) => `<th>${renderInlineMarkdown(header)}</th>`)
+    .join("")}</tr></thead>`;
+  const tbody = `<tbody>${bodyRows
+    .map(
+      (row) =>
+        `<tr>${row.map((cell) => `<td>${renderInlineMarkdown(cell)}</td>`).join("")}</tr>`,
+    )
+    .join("")}</tbody>`;
+
+  return `<div class="markdown-table-wrap"><table>${thead}${tbody}</table></div>`;
+}
+
+function renderInlineMarkdown(text) {
+  return text
+    .replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+&quot;[^&]*&quot;)?\)/g, (_match, alt, url) => {
+      const safeUrl = sanitizeMarkdownUrl(url);
+      if (!safeUrl) {
+        return "";
+      }
+      return `<img class="markdown-image" src="${safeUrl}" alt="${alt}" loading="lazy" />`;
+    })
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*([^*]+)\*/g, "<em>$1</em>");
+}
+
+function normalizeMarkdown(markdown) {
+  return markdown
+    .split(/\r?\n/)
+    .flatMap((line) => expandCompactTableLine(line))
+    .join("\n");
+}
+
+function expandCompactTableLine(line) {
+  const tableStart = line.indexOf("|");
+  if (tableStart < 0) {
+    return [line];
+  }
+
+  const prefix = line.slice(0, tableStart).trim();
+  const tablePart = line.slice(tableStart).trim();
+  if (!tablePart.startsWith("|") || !tablePart.includes("| |")) {
+    return [line];
+  }
+
+  const rows = tablePart
+    .replace(/\|\s+\|(?=\s*[:\-\w\u4e00-\u9fff\d])/g, "|\n|")
+    .split("\n");
+  return prefix ? [prefix, ...rows] : rows;
+}
+
+function sanitizeMarkdownUrl(url) {
+  const value = url.trim().replace(/&amp;/g, "&");
+  if (/^(https?:\/\/|\/charts\/|\/)/i.test(value)) {
+    return value;
+  }
+  return "";
+}
+
+function escapeHtml(value) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function toolCardKey(name, args) {
+  return `${name}:${JSON.stringify(args || {})}`;
+}
+
+function createToolCard(name, args) {
+  clearThinkingMessage();
+  const key = toolCardKey(name, args);
+  const card = document.createElement("details");
+  card.className = "chat-message tool tool-card";
+  card.open = true;
+
+  const summary = document.createElement("summary");
+  summary.className = "tool-summary";
+
+  const title = document.createElement("span");
+  title.className = "tool-title";
+  title.textContent = `调用工具：${name}`;
+
+  const status = document.createElement("span");
+  status.className = "tool-status running";
+  status.textContent = "运行中";
+
+  summary.append(title, status);
+
+  const body = document.createElement("pre");
+  body.className = "message-body tool-body";
+  body.textContent = JSON.stringify(
+    {
+      args,
+      result: "",
+    },
+    null,
+    2,
+  );
+
+  card.append(summary, body);
+  chatLog.append(card);
+  pendingToolCards.set(key, { card, body, status });
+  chatLog.scrollTop = chatLog.scrollHeight;
+  return card;
+}
+
+function completeToolCard(name, args, result) {
+  const key = toolCardKey(name, args);
+  const existing = pendingToolCards.get(key);
+  const cardInfo = existing || getLatestToolCardByName(name) || createDetachedToolCard(name, args);
+
+  cardInfo.body.textContent = JSON.stringify(
+    {
+      args,
+      result,
+    },
+    null,
+    2,
+  );
+  cardInfo.status.textContent = "完成";
+  cardInfo.status.classList.remove("running");
+  cardInfo.status.classList.add("done");
+  cardInfo.card.open = false;
+  pendingToolCards.delete(key);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+function getLatestToolCardByName(name) {
+  const entries = Array.from(pendingToolCards.values()).reverse();
+  return entries.find((item) => item.card.querySelector(".tool-title")?.textContent.includes(name));
+}
+
+function createDetachedToolCard(name, args) {
+  createToolCard(name, args);
+  return pendingToolCards.get(toolCardKey(name, args));
+}
+
+function appendToolMessage(title, data) {
+  const message = document.createElement("div");
+  message.className = "chat-message tool";
+
+  const label = document.createElement("div");
+  label.className = "message-label";
+  label.textContent = title;
+
+  const body = document.createElement("pre");
+  body.className = "message-body tool-body";
+  body.textContent = typeof data === "string" ? data : JSON.stringify(data, null, 2);
+
+  message.append(label, body);
+  chatLog.append(message);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+function appendChartMessage(chart) {
+  clearThinkingMessage();
+  const message = document.createElement("div");
+  message.className = "chat-message chart";
+
+  const label = document.createElement("div");
+  label.className = "message-label";
+  label.textContent = chart.title || "生成图表";
+
+  const figure = document.createElement("figure");
+  figure.className = "chart-figure";
+
+  const image = document.createElement("img");
+  image.src = chart.chart_url;
+  image.alt = chart.title || chart.chart_id;
+  image.loading = "lazy";
+
+  const caption = document.createElement("figcaption");
+  caption.textContent = `${chart.chart_type || "chart"} · ${chart.chart_id}`;
+
+  figure.append(image, caption);
+  message.append(label, figure);
+  chatLog.append(message);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+function parseToolResult(result) {
+  if (typeof result !== "string") {
+    return result;
+  }
+
+  try {
+    return JSON.parse(result);
+  } catch {
+    return result;
+  }
+}
+
+function handleChatEvent(eventData, assistantContent) {
+  if (eventData.type === "context_compacting") {
+    showStatus(eventData.content || "正在进行上下文压缩...");
+    setThinkingMessage(eventData.content || "上下文较长，正在压缩早期对话，请稍候...");
+    return assistantContent;
+  }
+
+  if (eventData.type === "context") {
+    updateContextMeter(eventData);
+    if (eventData.compacted) {
+      clearThinkingMessage();
+      showStatus("上下文压缩完成，早期对话已整理为摘要。");
+    }
+    return assistantContent;
+  }
+
+  if (eventData.type === "conversation") {
+    currentConversationId = eventData.conversation_id;
+    currentDatasetId = eventData.dataset_id;
+    conversationSelect.value = eventData.conversation_id;
+    return assistantContent;
+  }
+
+  if (eventData.type === "status") {
+    showStatus(eventData.content);
+    return assistantContent;
+  }
+
+  if (eventData.type === "thinking") {
+    setThinkingMessage(eventData.content || "模型正在思考下一步...");
+    return assistantContent;
+  }
+
+  if (eventData.type === "tool_reason") {
+    appendChatMessage("assistant", eventData.content || "我需要先调用工具获取准确结果。");
+    return null;
+  }
+
+  if (eventData.type === "tool_start") {
+    createToolCard(eventData.name, eventData.args || {});
+    return null;
+  }
+
+  if (eventData.type === "tool_end") {
+    completeToolCard(
+      eventData.name,
+      eventData.args || {},
+      parseToolResult(eventData.result),
+    );
+    return assistantContent;
+  }
+
+  if (eventData.type === "chart") {
+    appendChartMessage(eventData);
+    return assistantContent;
+  }
+
+  if (eventData.type === "text_delta") {
+    clearThinkingMessage();
+    const contentBox = assistantContent || appendChatMessage("assistant", "");
+    contentBox.dataset.markdown = `${contentBox.dataset.markdown || ""}${eventData.content}`;
+    renderMarkdown(contentBox, contentBox.dataset.markdown);
+    chatLog.scrollTop = chatLog.scrollHeight;
+    return contentBox;
+  }
+
+  if (eventData.type === "error") {
+    clearThinkingMessage();
+    throw new Error(formatErrorDetail(eventData.detail, "查询失败"));
+  }
+
+  if (eventData.type === "done") {
+    clearThinkingMessage();
+    return assistantContent;
+  }
+
+  return assistantContent;
+}
+
+async function readSseStream(response, onEvent) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder("utf-8");
+  let buffer = "";
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) {
+      break;
+    }
+
+    buffer += decoder.decode(value, { stream: true });
+    const parts = buffer.split(/\r?\n\r?\n/);
+    buffer = parts.pop() || "";
+
+    for (const part of parts) {
+      const eventData = parseSseMessage(part);
+      if (!eventData) {
+        continue;
+      }
+      onEvent(eventData);
+    }
+  }
+
+  if (buffer.trim()) {
+    const eventData = parseSseMessage(buffer);
+    if (eventData) {
+      onEvent(eventData);
+    }
+  }
+}
+
+function parseSseMessage(rawMessage) {
+  const dataLines = rawMessage
+    .split(/\r?\n/)
+    .filter((line) => line.startsWith("data:"))
+    .map((line) => line.slice(5).trimStart());
+
+  if (!dataLines.length) {
+    return null;
+  }
+
+  return JSON.parse(dataLines.join("\n"));
+}
+
+async function initializeApp() {
+  try {
+    await refreshDatasets();
+    await refreshConversations();
+    if (datasets.length) {
+      await loadDataset(datasets[0].dataset_id);
+      showStatus("已加载本地保存的数据集。");
+    }
+  } catch (error) {
+    showStatus(error.message, true);
+  }
+}
+
+initializeApp();

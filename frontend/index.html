@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Data Analyse Agent</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <main class="app-layout">
+      <aside class="sidebar">
+        <div class="brand">
+          <h1>Data Analyse Agent</h1>
+          <p>数据分析智能体</p>
+        </div>
+
+        <button id="new-conversation-button" class="new-chat-button" type="button">新建对话</button>
+
+        <section class="sidebar-section">
+          <h2>数据源</h2>
+          <div class="manager-control">
+            <label for="dataset-select">当前数据集</label>
+            <select id="dataset-select">
+              <option value="">暂无数据集</option>
+            </select>
+          </div>
+          <div class="dataset-actions">
+            <button id="rename-dataset-button" type="button">重命名</button>
+            <button id="delete-dataset-button" class="danger-button" type="button">删除数据集</button>
+          </div>
+          <form id="upload-form" class="upload-form">
+            <input id="file-input" type="file" accept=".csv,.xlsx,.xls" multiple required hidden />
+            <button id="upload-dataset-button" type="button">上传并创建新数据集</button>
+          </form>
+          <form id="append-table-form" class="upload-form append-table-form">
+            <input id="append-file-input" type="file" accept=".csv,.xlsx,.xls" multiple required hidden />
+            <button id="append-dataset-button" type="button">追加文件到当前数据集</button>
+          </form>
+        </section>
+
+        <section class="sidebar-section history-section">
+          <h2>历史对话</h2>
+          <select id="conversation-select" hidden>
+            <option value="">新对话</option>
+          </select>
+          <div id="conversation-list" class="conversation-list"></div>
+        </section>
+
+        <section class="sidebar-section context-section">
+          <h2>上下文窗口</h2>
+          <div class="context-meter">
+            <div class="context-row">
+              <span id="context-token-label">0 / 0 tokens</span>
+              <span id="context-percent-label">0%</span>
+            </div>
+            <div class="context-bar">
+              <div id="context-bar-fill"></div>
+            </div>
+            <div id="context-hint" class="context-hint">暂无对话上下文</div>
+          </div>
+        </section>
+      </aside>
+
+      <section class="main-content">
+        <header class="topbar">
+          <div>
+            <h2>数据工作台</h2>
+            <p>选择左侧数据源，然后开始提问、分析或生成图表。</p>
+          </div>
+        </header>
+
+        <section id="status" class="status" hidden></section>
+
+        <section id="summary" class="summary" hidden>
+          <div class="metrics">
+            <div>
+              <span>Dataset ID</span>
+              <strong id="dataset-id"></strong>
+            </div>
+            <div>
+              <span>文件名</span>
+              <strong id="filename"></strong>
+            </div>
+            <div>
+              <span>表数量</span>
+              <strong id="table-count"></strong>
+            </div>
+            <div>
+              <span>首表行数</span>
+              <strong id="row-count"></strong>
+            </div>
+            <div>
+              <span>首表列数</span>
+              <strong id="column-count"></strong>
+            </div>
+          </div>
+
+          <section class="tables-panel">
+            <h2>数据表</h2>
+            <div id="table-list" class="table-list"></div>
+          </section>
+
+          <details class="dataset-details">
+            <summary>首表字段信息和完整 Schema</summary>
+            <h2>首表字段信息</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>字段名</th>
+                    <th>类型</th>
+                    <th>缺失值</th>
+                  </tr>
+                </thead>
+                <tbody id="columns-body"></tbody>
+              </table>
+            </div>
+
+            <h2>Schema</h2>
+            <pre id="schema"></pre>
+          </details>
+
+          <section class="chat-panel">
+            <div id="chat-log" class="chat-log" hidden></div>
+            <form id="chat-form" class="chat-form">
+              <input
+                id="question-input"
+                type="text"
+                placeholder="统计每个类别的销售额总和。"
+                autocomplete="off"
+                required
+              />
+              <button type="submit">提问</button>
+            </form>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
