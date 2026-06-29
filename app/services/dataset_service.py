@@ -18,6 +18,8 @@ from app.schemas.manifest import (
     TableManifest,
 )
 from app.services.manifest_service import MANIFEST_FILENAME, ManifestService, manifest_service
+from app.services.sqlite_ddl_service import SQLiteDDLService, sqlite_ddl_service
+from app.services.sqlite_schema_service import SQLiteSchemaService, sqlite_schema_service
 from app.services.sqlite_storage_service import SQLiteStorageService, sqlite_storage_service
 
 
@@ -28,6 +30,8 @@ DEFAULT_SINGLE_TABLE_ALIAS = "data_table"
 SQLITE_FILENAME = "dataset.sqlite3"
 RAW_DIRNAME = "raw"
 PROCESSED_DIRNAME = "processed"
+SCHEMA_FILENAME = "schema.sql"
+INDEXES_FILENAME = "indexes.sql"
 
 
 def get_upload_size_limit_bytes() -> int | None:
@@ -102,11 +106,15 @@ class DatasetService:
         dataset_dir: Path = DATASET_DIR,
         sqlite_storage: SQLiteStorageService = sqlite_storage_service,
         manifests: ManifestService = manifest_service,
+        sqlite_ddl: SQLiteDDLService = sqlite_ddl_service,
+        sqlite_schema: SQLiteSchemaService = sqlite_schema_service,
     ) -> None:
         self.dataset_dir = dataset_dir
         self.metadata_path = dataset_dir / "metadata.json"
         self.sqlite_storage = sqlite_storage
         self.manifests = manifests
+        self.sqlite_ddl = sqlite_ddl
+        self.sqlite_schema = sqlite_schema
         self.datasets: dict[str, DatasetRecord] = {}
         self._load_metadata()
         self._index_existing_files()
@@ -155,7 +163,7 @@ class DatasetService:
             self._rebuild_sqlite_database(record)
             record.schema = self._build_schema(record)
             self.datasets[dataset_id] = record
-            self._write_manifest(record)
+            self._write_manifest(record, relationship_status="pending")
             self._save_metadata()
             return record
         except Exception:
@@ -202,7 +210,7 @@ class DatasetService:
 
         record.tables.update(new_tables)
         record.schema = self._build_schema(record)
-        self._write_manifest(record)
+        self._write_manifest(record, relationship_status="pending")
         self._save_metadata()
         return record
 
@@ -261,7 +269,7 @@ class DatasetService:
             table.processed_path.unlink()
 
         record.schema = self._build_schema(record)
-        self._write_manifest(record)
+        self._write_manifest(record, relationship_status="pending")
         self._save_metadata()
         return record
 
@@ -334,7 +342,21 @@ class DatasetService:
                     self._write_processed_dataframe(staged_path, dataframe)
                     staged_processed[table_name] = staged_path
 
-            self.sqlite_storage.rebuild(staged_database, candidate_dataframes)
+            ddl = self._generate_sqlite_ddl(record, candidate_dataframes)
+            self.sqlite_storage.rebuild_with_schema(
+                staged_database,
+                candidate_dataframes,
+                ddl.schema_sql,
+                ddl.indexes_sql,
+            )
+            (staging_path / SCHEMA_FILENAME).write_text(
+                ddl.schema_sql,
+                encoding="utf-8",
+            )
+            (staging_path / INDEXES_FILENAME).write_text(
+                ddl.indexes_sql,
+                encoding="utf-8",
+            )
         except Exception:
             shutil.rmtree(staging_path)
             raise
@@ -351,7 +373,7 @@ class DatasetService:
             record.manifest_path.read_bytes() if record.manifest_path.exists() else None
         )
         processed_backups: dict[Path, Path | None] = {}
-        database_backup = backup_path / SQLITE_FILENAME
+        artifact_backups: dict[Path, Path | None] = {}
 
         try:
             for table_name, staged_path in staged_processed.items():
@@ -364,8 +386,22 @@ class DatasetService:
                 processed_backups[target_path] = backup
                 os.replace(staged_path, target_path)
 
-            os.replace(record.database_path, database_backup)
-            os.replace(staged_database, record.database_path)
+            for staged_path, target_path in (
+                (staged_database, record.database_path),
+                (
+                    staging_path / SCHEMA_FILENAME,
+                    dataset_path / SCHEMA_FILENAME,
+                ),
+                (
+                    staging_path / INDEXES_FILENAME,
+                    dataset_path / INDEXES_FILENAME,
+                ),
+            ):
+                backup = backup_path / target_path.name if target_path.exists() else None
+                if backup:
+                    os.replace(target_path, backup)
+                artifact_backups[target_path] = backup
+                os.replace(staged_path, target_path)
 
             for table_name, dataframe in updates.items():
                 record.tables[table_name].dataframe = dataframe
@@ -378,10 +414,11 @@ class DatasetService:
             self._save_metadata()
             return record
         except Exception:
-            if database_backup.exists():
-                if record.database_path.exists():
-                    record.database_path.unlink()
-                os.replace(database_backup, record.database_path)
+            for target_path, backup in artifact_backups.items():
+                if target_path.exists():
+                    target_path.unlink()
+                if backup and backup.exists():
+                    os.replace(backup, target_path)
 
             for target_path, backup in processed_backups.items():
                 if target_path.exists():
@@ -422,6 +459,12 @@ class DatasetService:
         self._save_metadata()
         return record.database_path
 
+    def refresh_schema(self, dataset_id: str) -> str:
+        record = self._get_record(dataset_id)
+        record.schema = self._build_schema(record)
+        self._save_metadata()
+        return record.schema
+
     def get_manifest(self, dataset_id: str) -> dict[str, Any]:
         record = self._get_record(dataset_id)
         self._ensure_dataset_structure(record)
@@ -429,6 +472,18 @@ class DatasetService:
         if manifest is None:
             raise RuntimeError(f"数据集 Manifest 不存在：{dataset_id}")
         return manifest.model_dump(mode="json")
+
+    def get_relationship_status(self, dataset_id: str) -> str:
+        record = self._get_record(dataset_id)
+        self._ensure_dataset_structure(record)
+        manifest = self.manifests.load(record.manifest_path)
+        if manifest is None:
+            raise RuntimeError(f"数据集 Manifest 不存在：{dataset_id}")
+        return manifest.relationship_status
+
+    def require_relationship_configuration(self, dataset_id: str) -> None:
+        if self.get_relationship_status(dataset_id) != "confirmed":
+            raise ValueError("当前数据集尚未完成关系配置，请先确认主键、外键和索引设置")
 
     def get_summary(self, dataset_id: str) -> dict[str, Any]:
         record = self._get_record(dataset_id)
@@ -454,6 +509,7 @@ class DatasetService:
                 "manifest_path": str(record.manifest_path),
                 "manifest_ready": record.manifest_path.exists(),
             },
+            "relationship_configuration": self._relationship_summary(record),
             "row_count": int(len(first_dataframe)),
             "column_count": int(len(first_dataframe.columns)),
             "columns": self._column_summaries(first_dataframe),
@@ -777,6 +833,13 @@ class DatasetService:
         return restored
 
     def _build_schema(self, record: DatasetRecord) -> str:
+        if record.database_path.exists():
+            return self.sqlite_schema.build_schema_text(
+                database_path=record.database_path,
+                dataset_id=record.dataset_id,
+                dataset_name=record.filename,
+            )
+
         lines = [
             f"数据集 ID：{record.dataset_id}",
             f"数据集文件：{record.filename}",
@@ -871,7 +934,43 @@ class DatasetService:
             if table.dataframe is None:
                 table.dataframe = self._read_table_dataframe(table)
             dataframes.append((table.table_name, table.dataframe))
-        self.sqlite_storage.rebuild(record.database_path, dataframes)
+        ddl = self._generate_sqlite_ddl(record, dataframes)
+        self.sqlite_storage.rebuild_with_schema(
+            record.database_path,
+            dataframes,
+            ddl.schema_sql,
+            ddl.indexes_sql,
+        )
+        self._write_text_atomic(
+            record.database_path.parent / SCHEMA_FILENAME,
+            ddl.schema_sql,
+        )
+        self._write_text_atomic(
+            record.database_path.parent / INDEXES_FILENAME,
+            ddl.indexes_sql,
+        )
+
+    def _generate_sqlite_ddl(
+        self,
+        record: DatasetRecord,
+        dataframes: list[tuple[str, pd.DataFrame]],
+    ):
+        manifest = self.manifests.load(record.manifest_path)
+        configs = (
+            {table.table_name: table for table in manifest.tables}
+            if manifest
+            else {}
+        )
+        return self.sqlite_ddl.generate(dataframes, configs)
+
+    def _write_text_atomic(self, path: Path, content: str) -> None:
+        temporary_path = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+        try:
+            temporary_path.write_text(content, encoding="utf-8")
+            os.replace(temporary_path, path)
+        finally:
+            if temporary_path.exists():
+                temporary_path.unlink()
 
     def _delete_table_source_files(
         self,
@@ -962,9 +1061,19 @@ class DatasetService:
         if not record.manifest_path.exists() or changed:
             self._write_manifest(record)
             changed = True
+        schema_path = dataset_path / SCHEMA_FILENAME
+        indexes_path = dataset_path / INDEXES_FILENAME
+        if not schema_path.exists() or not indexes_path.exists():
+            self._rebuild_sqlite_database(record)
+            record.schema = self._build_schema(record)
+            changed = True
         return changed
 
-    def _write_manifest(self, record: DatasetRecord) -> None:
+    def _write_manifest(
+        self,
+        record: DatasetRecord,
+        relationship_status: str | None = None,
+    ) -> None:
         existing = self.manifests.load(record.manifest_path)
         existing_tables = {
             table.table_name: table for table in existing.tables
@@ -1057,10 +1166,29 @@ class DatasetService:
             processing_status=(
                 existing.processing_status if existing else "not_started"
             ),
+            relationship_status=(
+                relationship_status
+                if relationship_status is not None
+                else existing.relationship_status if existing else "confirmed"
+            ),
+            relationship_confirmed_at=(
+                None
+                if relationship_status == "pending"
+                else existing.relationship_confirmed_at if existing else None
+            ),
             source=(existing.source if existing else DataSourceManifest(name=record.filename)),
             tables=table_manifests,
         )
         self.manifests.write(record.manifest_path, manifest)
+
+    def _relationship_summary(self, record: DatasetRecord) -> dict[str, Any]:
+        manifest = self.manifests.load(record.manifest_path)
+        if manifest is None:
+            return {"status": "pending", "confirmed_at": None}
+        return {
+            "status": manifest.relationship_status,
+            "confirmed_at": manifest.relationship_confirmed_at,
+        }
 
     def _relative_dataset_path(self, path: Path | None, dataset_path: Path) -> str:
         if path is None:

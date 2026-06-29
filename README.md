@@ -4,14 +4,17 @@
 
 用户可以上传 CSV 或 Excel 文件，把多个文件组织为同一个多表数据集，然后通过自然语言让 Agent 生成只读 SQL、执行查询、解释结果、完成数据质量分析并生成图表。项目自带浏览器界面，前端是由 FastAPI 直接托管的原生 HTML/CSS/JavaScript，不需要 Node.js 或 `npm run dev`。
 
-> 本文档描述的是仓库当前已经实现的功能，不包含尚未完成的自动数据清洗、主外键配置和实验报告导出等规划内容。
+> 本文档描述的是仓库当前已经实现的功能，不包含尚未完成的实验报告导出等规划内容。
 
 ## 当前功能
 
 - 上传一个或多个 CSV、XLSX、XLS 文件创建数据集。
 - 每个数据集会同时生成独立的 `dataset.sqlite3`，其中包含该数据集的全部表。
 - 原始文件保存在 `raw/` 且不被修改；每张逻辑表在 `processed/` 中保存为独立 CSV。
-- 每个数据集包含标准 `manifest.json`，记录字段统计、清洗历史以及预留的关系和索引配置。
+- 每个数据集包含标准 `manifest.json`，记录字段统计、清洗历史、主外键和索引配置。
+- 上传或追加数据后自动分析主键、外键和索引候选，并由 LLM 给出受候选集合约束的推荐和理由。
+- 关系配置是新数据集的必经步骤；用户可明确选择不建立某类约束，但必须确认一次才能使用 Agent。
+- 自动生成可复现的 `schema.sql` 和 `indexes.sql`；Agent 从 SQLite PRAGMA 读取实际关系结构。
 - 向当前数据集继续追加文件；Excel 的每个 Sheet 会成为一张表。
 - 本地保存、重命名和删除数据集，并可删除数据集中的单张表。
 - 自动识别字段类型、缺失值、样例数据和可供 Agent 使用的 Schema。
@@ -127,9 +130,10 @@ http://127.0.0.1:8000
 
 1. 点击“上传并创建新数据集”，可一次选择多个 CSV 或 Excel 文件。
 2. 在左侧选择当前数据集；需要增加表时点击“追加文件到当前数据集”。
-3. 在输入框中提出问题，例如：`统计每个类别的销售额总和。`
-4. Agent 会依次展示调用原因、工具卡片、查询结果处理状态和最终回答。
-5. 可在左侧恢复或删除历史对话，也可以切换当前数据集。
+3. 上传处理完成后会自动打开“关系配置”弹窗；检查 AI 推荐，选择主键、外键和索引，然后点击“确认配置并继续”。
+4. 在输入框中提出问题，例如：`统计每个类别的销售额总和。`
+5. Agent 会依次展示调用原因、工具卡片、查询结果处理状态和最终回答。
+6. 可在左侧恢复或删除历史对话，也可以切换当前数据集。
 
 单表数据集通过 SQLite 视图兼容 `data_table` 别名；多表数据集必须使用 Schema 中的具体表名。包含空格、换行或特殊字符的字段会使用 SQLite 双引号标识符，例如：
 
@@ -180,7 +184,10 @@ app/storage/
 │       ├── raw/             # 上传的原始 CSV / Excel，永不修改
 │       ├── processed/       # 每张逻辑表对应的当前 CSV
 │       ├── manifest.json    # 字段、清洗、关系和索引配置
-│       └── dataset.sqlite3  # 从 processed 数据构建
+│       ├── relationship_advice.json # 基于当前候选缓存的 LLM 建议
+│       ├── schema.sql       # 根据 Manifest 生成的建表语句
+│       ├── indexes.sql      # 根据 Manifest 生成的索引语句
+│       └── dataset.sqlite3  # 带已确认约束和索引的数据库
 ├── conversations/
 │   └── {conversation_id}.json
 └── charts/
@@ -199,6 +206,10 @@ app/storage/
 | `POST` | `/api/upload` | 上传一个或多个文件创建数据集，表单字段为 `files` |
 | `GET` | `/api/datasets/{dataset_id}` | 获取数据集 Schema 和表信息 |
 | `GET` | `/api/datasets/{dataset_id}/manifest` | 获取数据集 Manifest |
+| `GET` | `/api/datasets/{dataset_id}/relationships` | 获取已保存关系及验证结果 |
+| `GET` | `/api/datasets/{dataset_id}/relationships/suggestions` | 生成统计候选和 LLM 关系建议，可用 `refresh_llm=true` 强制刷新 |
+| `GET` | `/api/datasets/{dataset_id}/relationships/validation` | 验证当前关系完整性 |
+| `PUT` | `/api/datasets/{dataset_id}/relationships` | 确认、保存关系并重建 SQLite |
 | `PATCH` | `/api/datasets/{dataset_id}` | 重命名数据集 |
 | `DELETE` | `/api/datasets/{dataset_id}` | 删除数据集及本地文件 |
 | `POST` | `/api/datasets/{dataset_id}/tables` | 追加文件或数据表 |
@@ -324,12 +335,12 @@ python scripts/materialize_sqlite.py --rebuild
 
 ## 当前限制
 
-- SQLite 已经成为 Agent 的正式只读查询后端，但当前自动建库还没有业务主键、外键和索引配置。
+- LLM 只能从唯一率、字段名、类型和值包含关系产生的候选中推荐，业务语义仍需用户确认，系统不会自动应用。
 - 清洗 Tools 只提供预定义操作，不支持任意 Python、自定义表达式或复杂业务清洗脚本。
 - SQL 安全校验以应用层规则为主，不应作为面向不可信公网用户的完整安全边界。
 - 上传文件会先读入内存，大文件会增加内存占用和处理时间。
 - 项目没有用户认证和权限隔离，当前定位是本地单用户开发与实验环境。
 - 上下文 Token 数量是近似估算，压缩过程还会产生额外模型调用。
-- 自动测试已覆盖 SQLite 建库、单表别名、多表 JOIN、只读安全、查询超时、清洗建议、应用与重置、类型持久化和工具原因生成；上传 API、完整 Agent 和图表流程仍需继续补充。
+- 自动测试已覆盖 SQLite 建库、主外键和索引重建、关系完整性、多表 JOIN、只读安全、查询超时、清洗建议、应用与重置、类型持久化和工具原因生成；上传 API、完整 Agent 和图表流程仍需继续补充。
 
-如用于数据库课程实验，还需要补充公开数据来源说明、可复现的数据清洗脚本、SQLite/MySQL/PostgreSQL 建库与导入脚本、主外键和索引、业务案例截图及实验报告。
+如用于数据库课程实验，还需要补充公开数据来源说明、课程案例的关系配置、业务案例截图及实验报告。

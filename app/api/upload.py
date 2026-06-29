@@ -1,7 +1,12 @@
 from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
 
+from app.schemas.relationships import (
+    ReviseRelationshipConfigRequest,
+    SaveRelationshipConfigRequest,
+)
 from app.services.dataset_service import dataset_service
+from app.services.relationship_service import relationship_service
 
 
 router = APIRouter()
@@ -42,6 +47,69 @@ def get_dataset_manifest(dataset_id: str) -> dict:
         return dataset_service.get_manifest(dataset_id)
     except KeyError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/datasets/{dataset_id}/relationships")
+def get_dataset_relationships(dataset_id: str) -> dict:
+    try:
+        return relationship_service.get_configuration(dataset_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.get("/datasets/{dataset_id}/relationships/suggestions")
+def suggest_dataset_relationships(
+    dataset_id: str,
+    refresh_llm: bool = False,
+) -> dict:
+    try:
+        return relationship_service.suggest(
+            dataset_id,
+            include_llm=True,
+            refresh_llm=refresh_llm,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.get("/datasets/{dataset_id}/relationships/validation")
+def validate_dataset_relationships(dataset_id: str) -> dict:
+    try:
+        return relationship_service.validate(dataset_id)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
+@router.put("/datasets/{dataset_id}/relationships")
+def save_dataset_relationships(
+    dataset_id: str,
+    payload: SaveRelationshipConfigRequest,
+) -> dict:
+    try:
+        return relationship_service.save(
+            dataset_id,
+            payload.tables,
+            payload.confirmed,
+        )
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@router.post("/datasets/{dataset_id}/relationships/revise")
+def revise_dataset_relationships(
+    dataset_id: str,
+    payload: ReviseRelationshipConfigRequest,
+) -> dict:
+    try:
+        return relationship_service.revise(dataset_id, payload.tables)
+    except KeyError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except (ValueError, RuntimeError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.patch("/datasets/{dataset_id}")

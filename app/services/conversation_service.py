@@ -24,6 +24,9 @@ class ConversationService:
             "dataset_id": dataset_id,
             "created_at": now,
             "updated_at": now,
+            "context_summary": "",
+            "context_summary_message_count": 0,
+            "context_summary_through_message_id": None,
             "messages": [],
         }
         self._write(conversation)
@@ -84,13 +87,15 @@ class ConversationService:
             self.append_message(conversation_id, message)
 
     def _summary(self, conversation: dict[str, Any]) -> dict[str, Any]:
+        messages = conversation.get("messages", [])
         return {
             "conversation_id": conversation["conversation_id"],
             "title": conversation.get("title", "新对话"),
             "dataset_id": conversation.get("dataset_id", ""),
             "created_at": conversation.get("created_at", ""),
             "updated_at": conversation.get("updated_at", ""),
-            "message_count": len(conversation.get("messages", [])),
+            "message_count": len(messages),
+            "turn_count": self._count_user_turns(messages),
         }
 
     def _write(self, conversation: dict[str, Any]) -> None:
@@ -104,6 +109,13 @@ class ConversationService:
 
     def _now(self) -> str:
         return datetime.now(timezone.utc).isoformat()
+
+    def _count_user_turns(self, messages: list[dict[str, Any]]) -> int:
+        return sum(
+            1
+            for message in messages
+            if message.get("role") == "user" and message.get("type") == "text"
+        )
 
 
 conversation_service = ConversationService()

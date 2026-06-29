@@ -21,6 +21,20 @@ const contextTokenLabel = document.querySelector("#context-token-label");
 const contextPercentLabel = document.querySelector("#context-percent-label");
 const contextBarFill = document.querySelector("#context-bar-fill");
 const contextHint = document.querySelector("#context-hint");
+const relationshipPanel = document.querySelector("#relationship-panel");
+const analyzeRelationshipsButton = document.querySelector("#analyze-relationships-button");
+const saveRelationshipsButton = document.querySelector("#save-relationships-button");
+const relationshipStatus = document.querySelector("#relationship-status");
+const relationshipEditor = document.querySelector("#relationship-editor");
+const relationshipDialog = document.querySelector("#relationship-dialog");
+const relationshipDialogStatus = document.querySelector("#relationship-dialog-status");
+const relationshipAdvice = document.querySelector("#relationship-advice");
+const refreshRelationshipAdviceButton = document.querySelector(
+  "#refresh-relationship-advice-button",
+);
+const closeRelationshipDialogButton = document.querySelector(
+  "#close-relationship-dialog-button",
+);
 
 let currentDatasetId = null;
 let currentConversationId = null;
@@ -28,6 +42,9 @@ let datasets = [];
 let conversations = [];
 let pendingToolCards = new Map();
 let thinkingMessage = null;
+let relationshipSuggestions = null;
+let relationshipConfigurationStatus = "confirmed";
+let relationshipLoading = false;
 
 function showStatus(message, isError = false) {
   statusBox.hidden = false;
@@ -81,12 +98,275 @@ function renderDataset(data, resetChat = true) {
   );
 
   renderTableList(data.tables || []);
+  relationshipSuggestions = null;
+  relationshipEditor.replaceChildren();
+  relationshipAdvice.replaceChildren();
+  saveRelationshipsButton.disabled = true;
+  relationshipConfigurationStatus = data.relationship_configuration?.status || "confirmed";
+  setRelationshipGate(relationshipConfigurationStatus);
 
   summary.hidden = false;
   if (resetChat) {
     chatLog.hidden = true;
     chatLog.replaceChildren();
   }
+  if (relationshipConfigurationStatus !== "confirmed") {
+    window.setTimeout(() => {
+      void openRelationshipConfiguration(false);
+    }, 0);
+  }
+}
+
+function optionLabel(columns) {
+  return columns.map((column) => `“${column}”`).join(" + ");
+}
+
+function createChoice(type, name, checked, labelText, value, recommended = false) {
+  const label = document.createElement("label");
+  label.className = "relationship-choice";
+  label.classList.toggle("recommended", recommended);
+  const input = document.createElement("input");
+  input.type = type;
+  input.name = name;
+  input.checked = checked;
+  input.value = JSON.stringify(value);
+  const text = document.createElement("span");
+  text.textContent = recommended ? `${labelText} · AI 推荐` : labelText;
+  label.append(input, text);
+  return label;
+}
+
+function renderRelationshipSuggestions(data) {
+  const currentByTable = new Map(data.current.map((item) => [item.table_name, item]));
+  const foreignKeysByTable = new Map();
+  for (const candidate of data.foreign_key_candidates) {
+    const items = foreignKeysByTable.get(candidate.table_name) || [];
+    items.push(candidate);
+    foreignKeysByTable.set(candidate.table_name, items);
+  }
+
+  relationshipEditor.replaceChildren(
+    ...data.tables.map((table) => {
+      const current = currentByTable.get(table.table_name);
+      const section = document.createElement("section");
+      section.className = "relationship-table";
+      const heading = document.createElement("h3");
+      heading.textContent = table.table_name;
+
+      const primaryTitle = document.createElement("h4");
+      primaryTitle.textContent = "主键";
+      const primaryChoices = document.createElement("div");
+      primaryChoices.className = "relationship-choices";
+      const recommendedPrimary = table.primary_key_candidates.find(
+        (candidate) => candidate.llm_recommended,
+      );
+      primaryChoices.append(
+        createChoice(
+          "radio",
+          `pk-${table.table_name}`,
+          !current.primary_key.length && !recommendedPrimary,
+          "不设置主键",
+          [],
+        ),
+      );
+      for (const candidate of table.primary_key_candidates) {
+        const isCurrent = JSON.stringify(candidate.columns) === JSON.stringify(current.primary_key);
+        const selected = isCurrent || (!current.primary_key.length && candidate.llm_recommended);
+        primaryChoices.append(
+          createChoice(
+            "radio",
+            `pk-${table.table_name}`,
+            selected,
+            `${optionLabel(candidate.columns)} · 可信度 ${Math.round(candidate.score * 100)}%`,
+            candidate.columns,
+            Boolean(candidate.llm_recommended),
+          ),
+        );
+      }
+
+      const foreignTitle = document.createElement("h4");
+      foreignTitle.textContent = "外键";
+      const foreignChoices = document.createElement("div");
+      foreignChoices.className = "relationship-choices";
+      const foreignCandidates = foreignKeysByTable.get(table.table_name) || [];
+      for (const candidate of foreignCandidates) {
+        foreignChoices.append(
+          createChoice(
+            "checkbox",
+            `fk-${table.table_name}`,
+            Boolean(candidate.current || candidate.llm_recommended),
+            `${optionLabel(candidate.columns)} → ${candidate.referenced_table}.${optionLabel(candidate.referenced_columns)} · 匹配率 ${Math.round(candidate.match_ratio * 100)}%`,
+            candidate,
+            Boolean(candidate.llm_recommended),
+          ),
+        );
+      }
+      if (!foreignCandidates.length) {
+        foreignChoices.textContent = "未发现满足完整性要求的候选外键。";
+      }
+
+      const indexTitle = document.createElement("h4");
+      indexTitle.textContent = "索引";
+      const indexChoices = document.createElement("div");
+      indexChoices.className = "relationship-choices";
+      for (const candidate of table.index_candidates) {
+        indexChoices.append(
+          createChoice(
+            "checkbox",
+            `index-${table.table_name}`,
+            Boolean(candidate.current || candidate.llm_recommended),
+            `${candidate.name} (${optionLabel(candidate.columns)})`,
+            candidate,
+            Boolean(candidate.llm_recommended),
+          ),
+        );
+      }
+      if (!table.index_candidates.length) {
+        indexChoices.textContent = "暂无索引候选。";
+      }
+
+      section.append(
+        heading,
+        primaryTitle,
+        primaryChoices,
+        foreignTitle,
+        foreignChoices,
+        indexTitle,
+        indexChoices,
+      );
+      return section;
+    }),
+  );
+  renderRelationshipAdvice(data.llm_advice || {});
+  relationshipDialogStatus.textContent = "请选择后确认";
+  saveRelationshipsButton.disabled = false;
+}
+
+function renderRelationshipAdvice(advice) {
+  const heading = document.createElement("strong");
+  heading.textContent = advice.status === "success" ? "AI 建议" : "候选分析";
+  const summaryText = document.createElement("p");
+  summaryText.textContent = advice.summary || "请根据候选证据确认关系配置。";
+  relationshipAdvice.replaceChildren(heading, summaryText);
+  const details = document.createElement("div");
+  details.className = "relationship-advice-details";
+  for (const recommendation of advice.table_recommendations || []) {
+    const line = document.createElement("p");
+    const primary = recommendation.primary_key?.length
+      ? `主键 ${optionLabel(recommendation.primary_key)}`
+      : "不建议设置主键";
+    const indexes = recommendation.indexes?.length
+      ? `；索引 ${recommendation.indexes.join("、")}`
+      : "；不额外建议索引";
+    const reason = [recommendation.primary_key_reason, recommendation.index_reason]
+      .filter(Boolean)
+      .join("；");
+    line.textContent = `${recommendation.table_name}：${primary}${indexes}${reason ? `。${reason}` : ""}`;
+    details.append(line);
+  }
+  const foreignKeys = new Map(
+    (relationshipSuggestions?.foreign_key_candidates || []).map((item) => [
+      item.candidate_id,
+      item,
+    ]),
+  );
+  for (const recommendation of advice.foreign_key_recommendations || []) {
+    const candidate = foreignKeys.get(recommendation.candidate_id);
+    if (!candidate) {
+      continue;
+    }
+    const line = document.createElement("p");
+    line.textContent = `${candidate.table_name}.${candidate.columns.join("+")} → ${candidate.referenced_table}.${candidate.referenced_columns.join("+")}。${recommendation.reason}`;
+    details.append(line);
+  }
+  if (details.childElementCount) {
+    relationshipAdvice.append(details);
+  }
+  if (advice.warnings?.length) {
+    const warningList = document.createElement("ul");
+    for (const warning of advice.warnings.slice(0, 4)) {
+      const item = document.createElement("li");
+      item.textContent = warning;
+      warningList.append(item);
+    }
+    relationshipAdvice.append(warningList);
+  }
+}
+
+function setRelationshipGate(status) {
+  const pending = status !== "confirmed";
+  relationshipStatus.textContent = pending
+    ? "待确认，完成后才能使用 Agent"
+    : "已确认，可随时重新配置";
+  questionInput.disabled = pending;
+  const submitButton = chatForm.querySelector('button[type="submit"]');
+  submitButton.disabled = pending;
+  questionInput.placeholder = pending
+    ? "请先完成关系配置"
+    : "统计每个类别的销售额总和。";
+  closeRelationshipDialogButton.hidden = pending;
+}
+
+async function openRelationshipConfiguration(refreshLLM = false) {
+  if (!currentDatasetId || relationshipLoading) {
+    return;
+  }
+  relationshipLoading = true;
+  analyzeRelationshipsButton.disabled = true;
+  refreshRelationshipAdviceButton.disabled = true;
+  saveRelationshipsButton.disabled = true;
+  relationshipDialogStatus.textContent = "正在分析候选并请求 AI 建议...";
+  relationshipAdvice.textContent = "AI 正在根据字段结构、唯一率和关联匹配率生成建议。";
+  relationshipEditor.replaceChildren();
+  if (!relationshipDialog.open) {
+    relationshipDialog.showModal();
+  }
+  try {
+    const query = refreshLLM ? "?refresh_llm=true" : "";
+    relationshipSuggestions = await fetchJson(
+      `/api/datasets/${currentDatasetId}/relationships/suggestions${query}`,
+    );
+    renderRelationshipSuggestions(relationshipSuggestions);
+  } catch (error) {
+    relationshipDialogStatus.textContent = "建议生成失败";
+    relationshipAdvice.textContent = error.message;
+    showStatus(error.message, true);
+  } finally {
+    relationshipLoading = false;
+    analyzeRelationshipsButton.disabled = false;
+    refreshRelationshipAdviceButton.disabled = false;
+  }
+}
+
+function collectRelationshipConfig() {
+  return relationshipSuggestions.tables.map((table) => {
+    const primaryInput = relationshipEditor.querySelector(
+      `input[name="pk-${CSS.escape(table.table_name)}"]:checked`,
+    );
+    const foreignInputs = relationshipEditor.querySelectorAll(
+      `input[name="fk-${CSS.escape(table.table_name)}"]:checked`,
+    );
+    const indexInputs = relationshipEditor.querySelectorAll(
+      `input[name="index-${CSS.escape(table.table_name)}"]:checked`,
+    );
+    return {
+      table_name: table.table_name,
+      primary_key: primaryInput ? JSON.parse(primaryInput.value) : [],
+      foreign_keys: Array.from(foreignInputs, (input) => {
+        const value = JSON.parse(input.value);
+        return {
+          columns: value.columns,
+          referenced_table: value.referenced_table,
+          referenced_columns: value.referenced_columns,
+          name: value.name,
+        };
+      }),
+      indexes: Array.from(indexInputs, (input) => {
+        const value = JSON.parse(input.value);
+        return { name: value.name, columns: value.columns, unique: value.unique };
+      }),
+    };
+  });
 }
 
 function renderTableList(tables) {
@@ -204,9 +484,10 @@ function renderConversationList() {
 
       const meta = document.createElement("span");
       meta.className = "conversation-meta";
+      const turnCount = conversation.turn_count ?? conversation.message_count ?? 0;
       meta.textContent = dataset
-        ? `${dataset.filename} · ${conversation.message_count}条`
-        : `${conversation.message_count}条`;
+        ? `${dataset.filename} · ${turnCount}轮`
+        : `${turnCount}轮`;
 
       button.append(title, meta);
       button.addEventListener("click", async () => {
@@ -277,12 +558,15 @@ function updateContextMeter(context) {
   const limit = context.context_limit_tokens || 0;
   const percent = limit ? Math.min(100, Math.round((estimated / limit) * 100)) : 0;
   const threshold = Math.round((context.compact_threshold || 0.8) * 100);
+  const sourceLabel = context.token_source_label || "字符估算";
+  const summarySourceLabel = context.summary_token_source_label || sourceLabel;
 
   contextTokenLabel.textContent = `${estimated} / ${limit} tokens`;
   contextPercentLabel.textContent = `${percent}%`;
   contextBarFill.style.width = `${percent}%`;
   contextBarFill.classList.toggle("warning", percent >= threshold);
-  contextHint.textContent = `压缩阈值 ${threshold}% · 摘要约 ${context.summary_tokens || 0} tokens`;
+  contextHint.textContent =
+    `统计方式：${sourceLabel} · 压缩阈值 ${threshold}% · 摘要约 ${context.summary_tokens || 0} tokens（${summarySourceLabel}）`;
 }
 
 async function loadDataset(datasetId, clearConversation = true) {
@@ -514,9 +798,79 @@ deleteDatasetButton.addEventListener("click", async () => {
   }
 });
 
+analyzeRelationshipsButton.addEventListener("click", async () => {
+  if (!currentDatasetId) {
+    showStatus("请先选择一个数据集。", true);
+    return;
+  }
+  await openRelationshipConfiguration(false);
+});
+
+refreshRelationshipAdviceButton.addEventListener("click", async () => {
+  await openRelationshipConfiguration(true);
+});
+
+relationshipDialog.addEventListener("cancel", (event) => {
+  if (relationshipConfigurationStatus !== "confirmed") {
+    event.preventDefault();
+    relationshipDialogStatus.textContent = "必须确认一次关系配置后才能继续";
+  }
+});
+
+closeRelationshipDialogButton.addEventListener("click", () => {
+  if (relationshipConfigurationStatus === "confirmed") {
+    relationshipDialog.close();
+  }
+});
+
+saveRelationshipsButton.addEventListener("click", async () => {
+  if (!currentDatasetId || !relationshipSuggestions) {
+    return;
+  }
+  if (!window.confirm("确认使用当前选择重建 SQLite 数据库并保存主键、外键和索引吗？")) {
+    return;
+  }
+
+  saveRelationshipsButton.disabled = true;
+  analyzeRelationshipsButton.disabled = true;
+  refreshRelationshipAdviceButton.disabled = true;
+  relationshipDialogStatus.textContent = "正在验证完整性并重建 SQLite...";
+  try {
+    const result = await fetchJson(`/api/datasets/${currentDatasetId}/relationships`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        confirmed: true,
+        tables: collectRelationshipConfig(),
+      }),
+    });
+    const data = await fetchJson(`/api/datasets/${currentDatasetId}`);
+    renderDataset(data, false);
+    await refreshDatasets(data.dataset_id);
+    relationshipDialog.close();
+    relationshipStatus.textContent = "已确认，完整性验证通过";
+    relationshipPanel.open = true;
+    showStatus(
+      `关系配置已保存：${result.validation.tables.length} 张表验证通过。`,
+    );
+  } catch (error) {
+    relationshipDialogStatus.textContent = "配置保存失败";
+    showStatus(error.message, true);
+    saveRelationshipsButton.disabled = false;
+  } finally {
+    analyzeRelationshipsButton.disabled = false;
+    refreshRelationshipAdviceButton.disabled = false;
+  }
+});
+
 async function deleteDatasetTable(tableName) {
   if (!currentDatasetId) {
     showStatus("请先选择一个数据集。", true);
+    return;
+  }
+  if (relationshipConfigurationStatus !== "confirmed") {
+    showStatus("请先完成当前数据集的关系配置。", true);
+    await openRelationshipConfiguration(false);
     return;
   }
   if (!window.confirm(`确定删除数据表「${tableName}」吗？`)) {
@@ -543,6 +897,11 @@ chatForm.addEventListener("submit", async (event) => {
 
   if (!currentDatasetId) {
     showStatus("请先上传数据文件。", true);
+    return;
+  }
+  if (relationshipConfigurationStatus !== "confirmed") {
+    showStatus("请先完成当前数据集的关系配置。", true);
+    await openRelationshipConfiguration(false);
     return;
   }
 

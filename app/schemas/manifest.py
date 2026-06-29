@@ -71,5 +71,7 @@ class DatasetManifest(ManifestModel):
     database_path: str = "dataset.sqlite3"
     active_layer: str = "processed"
     processing_status: str = "not_started"
+    relationship_status: str = "confirmed"
+    relationship_confirmed_at: str | None = None
     source: DataSourceManifest = Field(default_factory=DataSourceManifest)
     tables: list[TableManifest]

@@ -72,53 +72,68 @@
         <section id="status" class="status" hidden></section>
 
         <section id="summary" class="summary" hidden>
-          <div class="metrics">
-            <div>
-              <span>Dataset ID</span>
-              <strong id="dataset-id"></strong>
-            </div>
-            <div>
-              <span>文件名</span>
-              <strong id="filename"></strong>
-            </div>
-            <div>
-              <span>表数量</span>
-              <strong id="table-count"></strong>
-            </div>
-            <div>
-              <span>首表行数</span>
-              <strong id="row-count"></strong>
-            </div>
-            <div>
-              <span>首表列数</span>
-              <strong id="column-count"></strong>
-            </div>
+          <div class="workspace-scroll">
+            <details class="dataset-overview-panel" open>
+              <summary>数据详情</summary>
+              <div class="dataset-overview-body">
+                <div class="metrics">
+                  <div>
+                    <span>Dataset ID</span>
+                    <strong id="dataset-id"></strong>
+                  </div>
+                  <div>
+                    <span>文件名</span>
+                    <strong id="filename"></strong>
+                  </div>
+                  <div>
+                    <span>表数量</span>
+                    <strong id="table-count"></strong>
+                  </div>
+                  <div>
+                    <span>首表行数</span>
+                    <strong id="row-count"></strong>
+                  </div>
+                  <div>
+                    <span>首表列数</span>
+                    <strong id="column-count"></strong>
+                  </div>
+                </div>
+
+                <section class="tables-panel">
+                  <h2>数据表</h2>
+                  <div id="table-list" class="table-list"></div>
+                </section>
+
+                <details id="relationship-panel" class="dataset-details relationship-panel">
+                  <summary>关系配置</summary>
+                  <div class="relationship-toolbar">
+                    <button id="analyze-relationships-button" type="button">打开关系配置</button>
+                    <span id="relationship-status"></span>
+                  </div>
+                </details>
+
+                <details class="dataset-details">
+                  <summary>首表字段信息和完整 Schema</summary>
+                  <h2>首表字段信息</h2>
+                  <div class="table-wrap">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>字段名</th>
+                          <th>类型</th>
+                          <th>缺失值</th>
+                        </tr>
+                      </thead>
+                      <tbody id="columns-body"></tbody>
+                    </table>
+                  </div>
+
+                  <h2>Schema</h2>
+                  <pre id="schema"></pre>
+                </details>
+              </div>
+            </details>
           </div>
-
-          <section class="tables-panel">
-            <h2>数据表</h2>
-            <div id="table-list" class="table-list"></div>
-          </section>
-
-          <details class="dataset-details">
-            <summary>首表字段信息和完整 Schema</summary>
-            <h2>首表字段信息</h2>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>字段名</th>
-                    <th>类型</th>
-                    <th>缺失值</th>
-                  </tr>
-                </thead>
-                <tbody id="columns-body"></tbody>
-              </table>
-            </div>
-
-            <h2>Schema</h2>
-            <pre id="schema"></pre>
-          </details>
 
           <section class="chat-panel">
             <div id="chat-log" class="chat-log" hidden></div>
@@ -136,6 +151,33 @@
         </section>
       </section>
     </main>
+
+    <dialog id="relationship-dialog" class="relationship-dialog">
+      <div class="relationship-dialog-header">
+        <div>
+          <h2>关系配置</h2>
+          <p>请检查 AI 建议并明确确认。可以选择不设置某类约束，但不能跳过此步骤。</p>
+        </div>
+        <div class="relationship-dialog-meta">
+          <span id="relationship-dialog-status"></span>
+          <button
+            id="close-relationship-dialog-button"
+            class="relationship-dialog-close"
+            type="button"
+            title="关闭关系配置"
+            aria-label="关闭关系配置"
+          >&times;</button>
+        </div>
+      </div>
+      <div class="relationship-dialog-body">
+        <section id="relationship-advice" class="relationship-advice"></section>
+        <div id="relationship-editor" class="relationship-editor"></div>
+      </div>
+      <div class="relationship-dialog-actions">
+        <button id="refresh-relationship-advice-button" type="button">重新获取 AI 建议</button>
+        <button id="save-relationships-button" type="button" disabled>确认配置并继续</button>
+      </div>
+    </dialog>
 
     <script src="/app.js"></script>
   </body>

@@ -230,12 +230,15 @@ def _format_sse(event: dict) -> str:
 def _resolve_conversation(req: ChatRequest) -> tuple[dict, str]:
     if req.conversation_id:
         conversation = conversation_service.get_conversation(req.conversation_id)
-        return conversation, conversation["dataset_id"]
+        dataset_id = conversation["dataset_id"]
+        dataset_service.require_relationship_configuration(dataset_id)
+        return conversation, dataset_id
 
     if not req.dataset_id:
         raise ValueError("缺少 dataset_id 或 conversation_id")
 
     dataset_service.get_summary(req.dataset_id)
+    dataset_service.require_relationship_configuration(req.dataset_id)
     conversation = conversation_service.create_conversation(dataset_id=req.dataset_id)
     return conversation, req.dataset_id
 

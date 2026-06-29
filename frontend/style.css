@@ -40,9 +40,12 @@ body {
 }
 
 .main-content {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   height: 100vh;
-  overflow: auto;
+  min-height: 0;
+  overflow: hidden;
   padding: 24px;
 }
 
@@ -174,7 +177,47 @@ button:disabled {
 }
 
 .summary {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  min-height: 0;
   margin-top: 24px;
+}
+
+.workspace-scroll {
+  flex: 0 0 auto;
+  overflow: visible;
+  padding-right: 0;
+}
+
+.dataset-overview-panel {
+  border: 1px solid #d8dee8;
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.dataset-overview-panel summary {
+  padding: 14px 16px;
+  cursor: pointer;
+  color: #0f172a;
+  font-size: 15px;
+  font-weight: 700;
+  user-select: none;
+}
+
+.dataset-overview-panel[open] summary {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.dataset-overview-body {
+  padding: 0 16px 16px;
+}
+
+.dataset-overview-panel[open] .dataset-overview-body {
+  max-height: min(48vh, calc(100vh - 320px));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
 }
 
 .sidebar-section {
@@ -436,20 +479,30 @@ pre {
 
 .chat-panel {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   gap: 12px;
+  min-height: 0;
   margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid #d8dee8;
+  background: #f7f8fa;
 }
 
 .chat-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
+  position: sticky;
+  bottom: 0;
+  padding: 12px 0 2px;
+  background: #f7f8fa;
 }
 
 .chat-log {
-  min-height: 280px;
-  max-height: 58vh;
+  flex: 1 1 auto;
+  min-height: 220px;
+  max-height: none;
   overflow: auto;
   padding: 14px;
   border: 1px solid #d8dee8;
@@ -465,6 +518,180 @@ pre {
   cursor: pointer;
   color: #334155;
   font-weight: 700;
+}
+
+.relationship-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 0;
+}
+
+.relationship-toolbar span {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.relationship-editor {
+  display: grid;
+  gap: 12px;
+}
+
+.relationship-table {
+  padding: 14px 0;
+  border-top: 1px solid #e2e8f0;
+}
+
+.relationship-table h3,
+.relationship-table h4 {
+  margin: 0 0 8px;
+}
+
+.relationship-table h4 {
+  margin-top: 14px;
+  color: #475569;
+  font-size: 13px;
+}
+
+.relationship-choices {
+  display: grid;
+  gap: 7px;
+  color: #475569;
+  font-size: 13px;
+}
+
+.relationship-choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.relationship-choice input {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.relationship-choice.recommended {
+  color: #1d4ed8;
+  font-weight: 650;
+}
+
+.relationship-dialog {
+  width: min(880px, calc(100vw - 32px));
+  height: min(820px, calc(100vh - 40px));
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #1f2937;
+}
+
+.relationship-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.relationship-dialog::backdrop {
+  background: rgb(15 23 42 / 58%);
+}
+
+.relationship-dialog-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.relationship-dialog-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.relationship-dialog-header h2 {
+  margin: 0;
+}
+
+.relationship-dialog-header span {
+  flex: 0 0 auto;
+  color: #64748b;
+  font-size: 13px;
+}
+
+.relationship-dialog-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.relationship-dialog-close {
+  width: 32px;
+  min-width: 32px;
+  height: 32px;
+  padding: 0;
+  border-color: #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.relationship-dialog-close:hover {
+  background: #f1f5f9;
+}
+
+.relationship-dialog-close[hidden] {
+  display: none;
+}
+
+.relationship-advice {
+  margin: 16px 20px 0;
+  padding: 12px 14px;
+  border-left: 3px solid #2563eb;
+  background: #eff6ff;
+}
+
+.relationship-advice p {
+  margin-top: 5px;
+  color: #334155;
+}
+
+.relationship-advice-details {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid #bfdbfe;
+}
+
+.relationship-advice-details p {
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+.relationship-advice ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+  color: #92400e;
+  font-size: 13px;
+}
+
+.relationship-dialog .relationship-editor {
+  padding: 4px 20px 18px;
+}
+
+.relationship-dialog-actions {
+  display: flex;
+  flex: 0 0 auto;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
 }
 
 .chat-message {
@@ -714,12 +941,29 @@ pre {
 
   .main-content {
     height: auto;
+    overflow: visible;
     padding: 18px;
+  }
+
+  .summary {
+    min-height: auto;
+  }
+
+  .workspace-scroll {
+    overflow: visible;
+    padding-right: 0;
+  }
+
+  .dataset-overview-body {
+    overflow: visible;
+    max-height: none;
   }
 
   .chat-form {
     align-items: stretch;
     flex-direction: column;
+    position: static;
+    padding-bottom: 0;
   }
 
   .chat-form {
@@ -728,5 +972,38 @@ pre {
 
   .metrics {
     grid-template-columns: 1fr;
+  }
+
+  .relationship-dialog {
+    width: calc(100vw - 16px);
+    height: calc(100vh - 16px);
+  }
+
+  .relationship-dialog-header {
+    padding: 14px;
+  }
+
+  .relationship-dialog-header p {
+    font-size: 13px;
+  }
+
+  .relationship-dialog-meta {
+    align-items: flex-end;
+    flex-direction: column-reverse;
+  }
+
+  .relationship-advice {
+    margin: 12px 14px 0;
+  }
+
+  .relationship-dialog .relationship-editor {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+
+  .relationship-dialog-actions {
+    align-items: stretch;
+    flex-direction: column;
+    padding: 12px 14px;
   }
 }
