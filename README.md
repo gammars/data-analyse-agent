@@ -63,7 +63,6 @@ SQLite 只读查询 / 数据分析 / 图表生成
 
 ## 环境要求
 
-- Conda 或 Miniconda
 - Python `3.11`
 - 可用的 OpenAI-compatible 大模型 API
 - 支持 Function Calling / Tool Calling 和流式响应的模型
@@ -72,19 +71,15 @@ SQLite 只读查询 / 数据分析 / 图表生成
 
 ## 安装
 
-请使用独立 Conda 环境，不要把依赖安装到 `base`：
 
 ```powershell
-conda create -n data-analyse-agent python=3.11 -y
-conda activate data-analyse-agent
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
+pip install -r requirements.txt
 ```
 
 如果还需要使用 `data-analyse-agent doctor` CLI，可安装本项目：
 
 ```powershell
-python -m pip install -e .
+pip install -e .
 data-analyse-agent doctor
 ```
 
@@ -114,7 +109,6 @@ DATA_ANALYSE_MAX_UPLOAD_MB=
 ## 启动项目
 
 ```powershell
-conda activate data-analyse-agent
 python run.py
 ```
 
