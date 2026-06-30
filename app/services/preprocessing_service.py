@@ -170,12 +170,21 @@ class PreprocessingService:
 
     def _select_tables(self, dataset_id: str, table_name: str | None) -> list:
         tables = self.dataset_service.iter_tables(dataset_id)
+        table_name = self._normalize_optional_table_name(table_name)
         if table_name is None:
             return tables
         selected = [table for table in tables if table.table_name == table_name]
         if not selected:
             raise KeyError(f"数据表不存在：{table_name}")
         return selected
+
+    def _normalize_optional_table_name(self, table_name: str | None) -> str | None:
+        if table_name is None:
+            return None
+        normalized = table_name.strip()
+        if not normalized or normalized.casefold() in {"none", "null"}:
+            return None
+        return normalized
 
     def _suggest_for_table(
         self,

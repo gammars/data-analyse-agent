@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 CleaningOperationName = Literal[
@@ -60,3 +60,15 @@ class ResetCleaningArgs(BaseModel):
         None,
         description="指定表名；不填则将数据集全部表恢复为 raw 原始状态",
     )
+
+    @field_validator("table_name", mode="before")
+    @classmethod
+    def normalize_optional_table_name(cls, value: object) -> object:
+        if value is None:
+            return None
+        if isinstance(value, str):
+            normalized = value.strip()
+            if not normalized or normalized.casefold() in {"none", "null"}:
+                return None
+            return normalized
+        return value

@@ -3,7 +3,7 @@ import json
 import pandas as pd
 
 from app.agent.tools import build_tools
-from app.schemas.preprocessing import CleaningOperation
+from app.schemas.preprocessing import CleaningOperation, ResetCleaningArgs
 from app.services.analysis_service import AnalysisService
 from app.services.chart_service import ChartService
 from app.services.dataset_service import DatasetService
@@ -153,3 +153,29 @@ def test_cleaning_tools_are_registered_and_invokable(tmp_path) -> None:
         )
     )
     assert reset["raw_unchanged"] is True
+
+
+def test_reset_cleaning_accepts_none_like_optional_table_names(tmp_path) -> None:
+    datasets = DatasetService(dataset_dir=tmp_path / "datasets")
+    record = datasets.save_dataset("dirty.csv", DIRTY_CSV)
+    preprocessing = PreprocessingService(datasets)
+
+    preprocessing.apply_cleaning(
+        record.dataset_id,
+        "dirty",
+        [CleaningOperation(operation="trim_strings", column="name")],
+    )
+
+    assert ResetCleaningArgs(dataset_id=record.dataset_id, table_name="None").table_name is None
+    assert ResetCleaningArgs(dataset_id=record.dataset_id, table_name="").table_name is None
+
+    reset_none = preprocessing.reset_cleaning(record.dataset_id, "None")
+    assert reset_none["reset_tables"] == ["dirty"]
+
+    preprocessing.apply_cleaning(
+        record.dataset_id,
+        "dirty",
+        [CleaningOperation(operation="trim_strings", column="name")],
+    )
+    reset_empty = preprocessing.reset_cleaning(record.dataset_id, "")
+    assert reset_empty["reset_tables"] == ["dirty"]
