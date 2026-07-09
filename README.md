@@ -120,6 +120,38 @@ http://127.0.0.1:8000
 
 `run.py` 默认启用 Uvicorn 自动重载。前端由 FastAPI 直接提供，不需要单独启动前端服务。
 
+## Python 沙箱 Docker 环境
+
+复杂分析 fallback 会使用独立 Docker 镜像执行生成的 Python 脚本。后端仍然运行在本机 Conda 环境中，Docker 只负责隔离执行动态分析代码。
+
+构建沙箱镜像：
+
+```powershell
+docker build -t data-analyse-agent-python-sandbox:latest .\docker\python-sandbox
+```
+
+验证沙箱能读取输入 JSON 并写出结果：
+
+```powershell
+python .\scripts\verify_python_sandbox.py
+```
+
+验证后端 `PythonSandboxService` 能调用 Docker 沙箱：
+
+```powershell
+python .\scripts\verify_python_sandbox_service.py
+```
+
+如果普通终端提示无法连接 `npipe:////./pipe/docker_engine`，请确认 Docker Desktop 已启动，并以有 Docker 权限的终端运行后端。镜像名称可通过 `.env` 覆盖：
+
+```env
+PYTHON_SANDBOX_IMAGE=data-analyse-agent-python-sandbox:latest
+PYTHON_SANDBOX_TIMEOUT_SECONDS=60
+PYTHON_SANDBOX_MEMORY=512m
+PYTHON_SANDBOX_CPUS=1
+PYTHON_SANDBOX_MAX_ROWS=50000
+```
+
 ## 使用界面
 
 1. 点击“上传并创建新数据集”，可一次选择多个 CSV 或 Excel 文件。
@@ -148,6 +180,7 @@ GROUP BY "订单状态";
 | `descriptive_statistics` | 生成数值和非数值字段描述性统计 |
 | `correlation_analysis` | 计算数值字段相关性及强相关字段对 |
 | `outlier_detection` | 使用 IQR 方法检测异常值 |
+| `python_analysis` | 将只读 SQL 结果导出为 JSON，并在 Docker 沙箱中执行生成的 Python 分析脚本 |
 | `suggest_cleaning` | 检查 processed 数据并生成建议，不修改数据 |
 | `apply_cleaning` | 执行用户确认的预定义清洗操作并重建 SQLite |
 | `reset_cleaning` | 从 raw 恢复指定表或整个数据集 |
@@ -184,11 +217,20 @@ app/storage/
 │       └── dataset.sqlite3  # 带已确认约束和索引的数据库
 ├── conversations/
 │   └── {conversation_id}.json
-└── charts/
-    └── {chart_id}.png
+├── charts/
+│   └── {chart_id}.png
+└── python_runs/
+    └── {run_id}/
+        ├── input/
+        │   ├── data.json
+        │   └── schema.json
+        ├── work/
+        │   └── analysis.py
+        └── output/
+            └── result.json
 ```
 
-这些目录默认被 `.gitignore` 忽略。迁移或打包项目时，需要根据用途单独备份数据集、对话和图表。删除数据集会删除其本地数据文件，但不会自动删除已经绑定该数据集的历史对话。
+这些目录默认被 `.gitignore` 忽略。迁移或打包项目时，需要根据用途单独备份数据集、对话、图表和 Python 沙箱运行记录。删除数据集会删除其本地数据文件，但不会自动删除已经绑定该数据集的历史对话。
 
 ## API
 
@@ -265,6 +307,14 @@ done
 ```
 
 图表文件通过 `/charts/{chart_id}.png` 访问。
+
+### 诊断
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| `GET` | `/api/sandbox/health` | 检查 Docker CLI、Docker daemon 和 Python 沙箱镜像是否可用 |
+
+如果检查失败，响应中会包含对应的 `fix` 修复命令或操作提示。
 
 ## 测试和诊断
 

@@ -34,6 +34,23 @@ def test_single_table_alias_row_limit_and_stddev(tmp_path) -> None:
     assert stats.iloc[0]["sample_stddev"] == 10.0
 
 
+def test_query_for_analysis_uses_separate_row_cap(tmp_path) -> None:
+    datasets = DatasetService(dataset_dir=tmp_path / "datasets")
+    rows = "\n".join(str(index) for index in range(1200))
+    record = datasets.save_dataset_files([("items.csv", _csv(f"id\n{rows}\n"))])
+    sql = SQLService(datasets, max_analysis_rows=1500)
+
+    display_result = sql.query(record.dataset_id, "SELECT id FROM data_table", max_rows=1200)
+    analysis_result = sql.query_for_analysis(
+        record.dataset_id,
+        "SELECT id FROM data_table",
+        max_rows=1200,
+    )
+
+    assert len(display_result) == 1000
+    assert len(analysis_result) == 1200
+
+
 def test_multitable_join_runs_against_sqlite(tmp_path) -> None:
     datasets = DatasetService(dataset_dir=tmp_path / "datasets")
     record = datasets.save_dataset_files(

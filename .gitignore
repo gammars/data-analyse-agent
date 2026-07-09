@@ -19,3 +19,5 @@ app/storage/charts/*
 !app/storage/charts/.gitkeep
 app/storage/conversations/*
 !app/storage/conversations/.gitkeep
+app/storage/python_runs/*
+!app/storage/python_runs/.gitkeep

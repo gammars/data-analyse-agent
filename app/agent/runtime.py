@@ -134,8 +134,7 @@ def stream_data_agent_events(
                 "result": result,
             }
 
-            chart_event = _try_build_chart_event(result)
-            if chart_event:
+            for chart_event in _try_build_chart_events(result):
                 yield chart_event
 
             messages.append(
@@ -176,24 +175,41 @@ def _stream_model_message(model_with_tools: Runnable, messages: list) -> AIMessa
     )
 
 
-def _try_build_chart_event(tool_result: str) -> dict | None:
+def _try_build_chart_events(tool_result: str) -> list[dict]:
     try:
         payload = json.loads(tool_result)
     except json.JSONDecodeError:
-        return None
+        return []
 
-    chart_url = payload.get("chart_url")
-    chart_id = payload.get("chart_id")
-    if not chart_url or not chart_id:
-        return None
+    events = []
+    candidates = []
+    if isinstance(payload.get("figures"), list):
+        candidates.extend(payload["figures"])
+    nested_result = payload.get("result")
+    if isinstance(nested_result, dict) and isinstance(nested_result.get("figures"), list):
+        candidates.extend(nested_result["figures"])
+    if payload.get("chart_url") and payload.get("chart_id"):
+        candidates.append(payload)
 
-    return {
-        "type": "chart",
-        "chart_id": chart_id,
-        "chart_type": payload.get("chart_type"),
-        "title": payload.get("title"),
-        "chart_url": chart_url,
-    }
+    seen = set()
+    for candidate in candidates:
+        if not isinstance(candidate, dict):
+            continue
+        chart_url = candidate.get("chart_url")
+        chart_id = candidate.get("chart_id")
+        if not chart_url or not chart_id or chart_id in seen:
+            continue
+        seen.add(chart_id)
+        events.append(
+            {
+                "type": "chart",
+                "chart_id": chart_id,
+                "chart_type": candidate.get("chart_type") or "python",
+                "title": candidate.get("title"),
+                "chart_url": chart_url,
+            }
+        )
+    return events
 
 
 def _build_tool_reason(tool_name: str, tool_args: dict) -> str:
@@ -206,6 +222,12 @@ def _build_tool_reason(tool_name: str, tool_args: dict) -> str:
     if tool_name == "generate_chart":
         chart_type = tool_args.get("chart_type") or "图表"
         return f"我需要调用 generate_chart，因为用户需要可视化结果，我将生成 {chart_type} 图表。"
+
+    if tool_name == "python_analysis":
+        goal = str(tool_args.get("analysis_goal") or "").strip()
+        if goal:
+            return f"我需要调用 python_analysis，在 Docker 沙箱中执行 Python 来完成复杂分析：{goal}"
+        return "我需要调用 python_analysis，因为当前问题需要普通 SQL 之外的复杂统计分析。"
 
     if tool_name == "profile_data":
         return "我需要调用 profile_data，因为用户需要整体数据质量和结构概览。"
