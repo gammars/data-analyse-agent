@@ -1,11 +1,14 @@
 import json
+import time
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_core.runnables import Runnable
 
 from app.agent.graph import build_agent_graph, make_agent_node
 from app.agent.models import build_chat_model
+from app.agent.planner import ExecutionPlan, PlanStep, build_execution_plan
 from app.agent.prompts import build_system_message
+from app.agent.tool_policy import MAX_PLAN_STEPS
 from app.agent.tools import build_tools
 from app.services.analysis_service import AnalysisService
 from app.services.chart_service import ChartService
@@ -14,6 +17,7 @@ from app.services.sql_service import SQLService
 
 
 MAX_TOOL_ROUNDS = 20
+MAX_STEP_TOOL_ROUNDS = 6
 
 
 def ask_data_agent(
@@ -64,7 +68,6 @@ def stream_data_agent_events(
     tools = build_tools(sql_service, chart_service, analysis_service)
     tools_by_name = {tool.name: tool for tool in tools}
     reason_model = build_chat_model()
-    model_with_tools = reason_model.bind_tools(tools)
     messages = [
         build_system_message(schema_text),
         *(history_messages or []),
@@ -76,10 +79,90 @@ def stream_data_agent_events(
         "content": "Agent 已接收问题，正在思考。",
     }
 
-    for round_index in range(MAX_TOOL_ROUNDS):
+    yield {
+        "type": "thinking",
+        "content": "正在生成执行计划...",
+    }
+    plan = build_execution_plan(
+        planner_model=reason_model,
+        user_question=message,
+        schema_text=schema_text,
+    )
+    yield {
+        "type": "plan",
+        "plan": plan.model_dump(),
+    }
+
+    for step_index, step in enumerate(plan.steps[:MAX_PLAN_STEPS], start=1):
+        selected_tools = [
+            tools_by_name[tool_name]
+            for tool_name in step.allowed_tools
+            if tool_name in tools_by_name
+        ]
+        if not selected_tools:
+            continue
+
+        yield {
+            "type": "plan_step_start",
+            "plan_id": plan.plan_id,
+            "step_id": step.step_id,
+            "step_index": step_index,
+            "total_steps": len(plan.steps),
+            "intent": step.intent,
+            "goal": step.goal,
+            "allowed_tools": step.allowed_tools,
+            "retry_limit": step.retry_limit,
+        }
+
+        messages.append(HumanMessage(content=_build_step_instruction(plan, step, step_index)))
+        model_with_tools = reason_model.bind_tools(selected_tools)
+        step_success = yield from _execute_plan_step(
+            model_with_tools=model_with_tools,
+            reason_model=reason_model,
+            messages=messages,
+            tools_by_name={tool.name: tool for tool in selected_tools},
+            user_question=message,
+            step=step,
+        )
+
+        yield {
+            "type": "plan_step_end",
+            "plan_id": plan.plan_id,
+            "step_id": step.step_id,
+            "success": step_success,
+        }
+
+    yield {
+        "type": "thinking",
+        "content": "计划步骤已完成，正在汇总结论...",
+    }
+    messages.append(
+        HumanMessage(
+            content=(
+                "请基于以上计划步骤和工具结果，用中文汇总回答用户的原始问题。"
+                "突出关键结论、图表和必要的限制说明；不要再调用工具。"
+            )
+        )
+    )
+    yield from _stream_model_message(reason_model, messages)
+    yield {"type": "done"}
+
+
+def _execute_plan_step(
+    model_with_tools: Runnable,
+    reason_model: Runnable,
+    messages: list,
+    tools_by_name: dict,
+    user_question: str,
+    step: PlanStep,
+) -> bool:
+    failed_attempts = 0
+    step_success = False
+
+    for round_index in range(MAX_STEP_TOOL_ROUNDS):
         yield {
             "type": "thinking",
-            "content": "模型正在思考下一步...",
+            "content": f"正在执行计划步骤：{step.goal}",
         }
         response = yield from _stream_model_message(model_with_tools, messages)
         messages.append(response)
@@ -87,10 +170,10 @@ def stream_data_agent_events(
         if not response.tool_calls:
             break
 
-        if round_index == MAX_TOOL_ROUNDS - 1:
+        if round_index == MAX_STEP_TOOL_ROUNDS - 1:
             yield {
                 "type": "text_delta",
-                "content": "\n\n已达到工具调用轮数上限，我将基于当前结果停止继续调用工具。请换一种更明确的问题再试。",
+                "content": "\n\n当前计划步骤已达到工具调用轮数上限，我将基于已有结果继续后续步骤。",
             }
             break
 
@@ -104,7 +187,7 @@ def stream_data_agent_events(
                     "type": "tool_reason",
                     "content": _generate_tool_reason(
                         reason_model=reason_model,
-                        user_question=message,
+                        user_question=user_question,
                         tool_name=tool_name,
                         tool_args=tool_args,
                         previous_tool_result=_latest_tool_result(messages[:-1]),
@@ -119,19 +202,30 @@ def stream_data_agent_events(
                 "args": tool_args,
             }
 
+            started_at = time.perf_counter()
+            tool_success = True
             if tool is None:
                 result = f"工具不存在：{tool_name}"
+                tool_success = False
             else:
                 try:
                     result = tool.invoke(tool_args)
                 except Exception as exc:
                     result = f"工具执行失败：{exc}"
+                    tool_success = False
+
+            duration_ms = int((time.perf_counter() - started_at) * 1000)
+            tool_success = tool_success and _tool_result_success(result)
+            step_success = step_success or tool_success
 
             yield {
                 "type": "tool_end",
                 "name": tool_name,
                 "args": tool_args,
                 "result": result,
+                "duration_ms": duration_ms,
+                "duration_label": _format_duration_ms(duration_ms),
+                "success": tool_success,
             }
 
             for chart_event in _try_build_chart_events(result):
@@ -144,12 +238,42 @@ def stream_data_agent_events(
                 )
             )
 
+            if not tool_success:
+                failed_attempts += 1
+                if failed_attempts > step.retry_limit:
+                    messages.append(
+                        HumanMessage(
+                            content=(
+                                f"计划步骤 {step.step_id} 已超过重试次数 "
+                                f"({step.retry_limit})。请停止重试该步骤，"
+                                "基于已有结果继续后续步骤或在最终回答中说明失败原因。"
+                            )
+                        )
+                    )
+                    return False
+
             yield {
                 "type": "thinking",
                 "content": "工具结果已返回，模型正在思考下一步...",
             }
 
-    yield {"type": "done"}
+    return step_success
+
+
+def _build_step_instruction(plan: ExecutionPlan, step: PlanStep, step_index: int) -> str:
+    allowed_tools = "、".join(step.allowed_tools)
+    return (
+        f"现在执行计划 {plan.plan_id} 的第 {step_index}/{len(plan.steps)} 步。\n"
+        f"用户原始目标：{plan.user_goal}\n"
+        f"当前步骤意图：{step.intent}\n"
+        f"当前步骤目标：{step.goal}\n"
+        f"成功标准：{step.success_criteria or '完成当前步骤目标'}\n"
+        f"本步骤只能调用这些工具：{allowed_tools}。\n"
+        f"优先工具：{step.preferred_tool or '无'}。\n"
+        f"本步骤失败重试上限：{step.retry_limit}。\n"
+        "如果本步骤需要工具，必须只从允许工具中选择；不要尝试调用本步骤未列出的工具。"
+        "如果信息不足以安全执行，请直接说明需要用户补充什么。"
+    )
 
 
 def _stream_model_message(model_with_tools: Runnable, messages: list) -> AIMessage:
@@ -210,6 +334,56 @@ def _try_build_chart_events(tool_result: str) -> list[dict]:
             }
         )
     return events
+
+
+def _tool_result_indicates_error(result: object) -> bool:
+    text = _message_content_to_text(result).strip()
+    if not text:
+        return False
+    error_markers = (
+        "失败",
+        "错误",
+        "不存在",
+        "未生成",
+        "not found",
+        "error",
+        "failed",
+        "traceback",
+    )
+    lowered = text.lower()
+    return any(marker in lowered for marker in error_markers)
+
+
+def _tool_result_success(result: object) -> bool:
+    text = _message_content_to_text(result).strip()
+    if not text:
+        return True
+
+    try:
+        payload = json.loads(text)
+    except json.JSONDecodeError:
+        return not _tool_result_indicates_error(text)
+
+    if not isinstance(payload, dict):
+        return True
+
+    if "ok" in payload:
+        return bool(payload["ok"])
+    if payload.get("error"):
+        return False
+    return True
+
+
+def _format_duration_ms(duration_ms: int) -> str:
+    safe_duration = max(int(duration_ms), 0)
+    if safe_duration < 1000:
+        return f"{safe_duration}ms"
+    seconds = safe_duration / 1000
+    if seconds < 60:
+        return f"{seconds:.2f}s"
+    minutes = int(seconds // 60)
+    remaining_seconds = seconds - minutes * 60
+    return f"{minutes}m {remaining_seconds:.1f}s"
 
 
 def _build_tool_reason(tool_name: str, tool_args: dict) -> str:

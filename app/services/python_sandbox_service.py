@@ -26,6 +26,46 @@ MAX_FIGURES = 10
 PROHIBITED_IMPORT_MODULES = {"socket", "requests", "subprocess"}
 ALLOWED_WORKSPACE_PREFIX = "/workspace"
 WINDOWS_ABSOLUTE_PATH_PATTERN = re.compile(r"^[a-zA-Z]:[\\/]")
+PYTHON_ANALYSIS_PREAMBLE = """\
+# Auto-injected by PythonSandboxService.
+# Make Matplotlib/Seaborn charts render Chinese labels in the Docker sandbox.
+try:
+    import matplotlib
+
+    matplotlib.rcParams["font.sans-serif"] = [
+        "Noto Sans CJK SC",
+        "Noto Sans CJK JP",
+        "Noto Sans CJK TC",
+        "Microsoft YaHei",
+        "SimHei",
+        "Arial Unicode MS",
+        "DejaVu Sans",
+    ]
+    matplotlib.rcParams["axes.unicode_minus"] = False
+except Exception:
+    pass
+
+try:
+    import seaborn as sns
+
+    sns.set_theme(
+        font="Noto Sans CJK SC",
+        rc={
+            "font.sans-serif": [
+                "Noto Sans CJK SC",
+                "Noto Sans CJK JP",
+                "Noto Sans CJK TC",
+                "Microsoft YaHei",
+                "SimHei",
+                "Arial Unicode MS",
+                "DejaVu Sans",
+            ],
+            "axes.unicode_minus": False,
+        },
+    )
+except Exception:
+    pass
+"""
 
 
 @dataclass(frozen=True)
@@ -121,7 +161,7 @@ class PythonSandboxService:
             ),
             encoding="utf-8",
         )
-        script_path.write_text(normalized_code, encoding="utf-8")
+        script_path.write_text(self._build_analysis_script(normalized_code), encoding="utf-8")
 
         command = self._build_docker_command(input_dir, work_dir, output_dir)
         try:
@@ -352,6 +392,8 @@ class PythonSandboxService:
             "--read-only",
             "--tmpfs",
             "/tmp:rw,noexec,nosuid,size=128m",
+            "-e",
+            "MPLCONFIGDIR=/tmp/matplotlib",
             "-v",
             f"{input_dir.resolve()}:/workspace/input:ro",
             "-v",
@@ -426,6 +468,9 @@ class PythonSandboxService:
                 lines = lines[:-1]
             code = "\n".join(lines).strip()
         return code
+
+    def _build_analysis_script(self, python_code: str) -> str:
+        return f"{PYTHON_ANALYSIS_PREAMBLE}\n\n{python_code}"
 
     def _truncate(self, value: str | None) -> str:
         text = value or ""

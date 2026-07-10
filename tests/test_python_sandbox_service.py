@@ -24,6 +24,8 @@ def test_python_sandbox_writes_inputs_and_reads_result(tmp_path) -> None:
         assert timeout == 9
         assert "--network" in command
         assert "none" in command
+        assert "-e" in command
+        assert "MPLCONFIGDIR=/tmp/matplotlib" in command
         output_dir = _mount_path(command, "/workspace/output:rw")
         (output_dir / "result.json").write_text(
             json.dumps({"summary": "ok", "metrics": {"rows": 2}}, ensure_ascii=False),
@@ -51,7 +53,10 @@ print("hello")
     assert result.stdout == "done"
     assert (result.run_dir / "input" / "data.json").exists()
     assert (result.run_dir / "input" / "schema.json").exists()
-    assert (result.run_dir / "work" / "analysis.py").read_text(encoding="utf-8") == 'print("hello")'
+    script = (result.run_dir / "work" / "analysis.py").read_text(encoding="utf-8")
+    assert "Noto Sans CJK SC" in script
+    assert "axes.unicode_minus" in script
+    assert script.rstrip().endswith('print("hello")')
 
 
 def test_python_sandbox_publishes_output_figures(tmp_path) -> None:

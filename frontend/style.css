@@ -739,6 +739,69 @@ pre {
   color: #475569;
 }
 
+.chat-message.plan .message-body {
+  display: block;
+  width: 100%;
+  border-color: #dbeafe;
+  background: #f8fbff;
+  color: #334155;
+  white-space: normal;
+}
+
+.plan-body {
+  display: grid;
+  gap: 10px;
+}
+
+.plan-summary,
+.plan-step-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.plan-pill {
+  display: inline-flex;
+  align-items: center;
+  max-width: 100%;
+  padding: 3px 7px;
+  border: 1px solid #bfdbfe;
+  border-radius: 999px;
+  background: #eff6ff;
+  color: #1e40af;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.plan-goal {
+  margin: 0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.plan-step-list {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding-left: 22px;
+}
+
+.plan-step {
+  padding: 8px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.plan-step-title {
+  margin-bottom: 6px;
+  color: #1f2937;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.55;
+}
+
 .thinking-body {
   display: inline-flex;
   align-items: center;
@@ -889,9 +952,201 @@ pre {
   color: #166534;
 }
 
+.tool-status.error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
 .tool-card .tool-body {
   border-width: 1px 0 0;
   border-radius: 0 0 6px 6px;
+}
+
+.tool-card .tool-body {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  background: #ffffff;
+  color: #334155;
+  white-space: normal;
+}
+
+.tool-meta-grid,
+.tool-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(138px, 1fr));
+  gap: 8px;
+}
+
+.tool-meta-item {
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #f8fafc;
+}
+
+.tool-meta-item span {
+  display: block;
+  margin-bottom: 2px;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.tool-meta-item strong {
+  display: block;
+  overflow: hidden;
+  color: #1f2937;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-section {
+  margin: 0;
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.tool-section h4 {
+  margin: 0 0 6px;
+  color: #334155;
+  font-size: 13px;
+}
+
+.tool-section p {
+  margin: 0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.tool-error-section {
+  border-color: #fecaca;
+  background: #fff7f7;
+}
+
+.tool-error-section h4 {
+  color: #991b1b;
+}
+
+.tool-code-section {
+  padding: 0;
+  overflow: hidden;
+}
+
+.tool-section-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.tool-section-header::-webkit-details-marker {
+  display: none;
+}
+
+.tool-section-header > span:first-child {
+  overflow: hidden;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-code-meta {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.tool-copy-button {
+  min-width: 54px;
+  padding: 4px 8px;
+  border-color: #cbd5e1;
+  background: #ffffff;
+  color: #475569;
+  font-size: 12px;
+}
+
+.tool-copy-button:hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+
+.tool-code {
+  max-height: 420px;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  border-top: 1px solid #1f2937;
+  background: #111827;
+  color: #e5e7eb;
+  font-family: "Cascadia Code", "Consolas", "SFMono-Regular", monospace;
+  font-size: 12px;
+  line-height: 1.65;
+  tab-size: 4;
+  white-space: pre;
+}
+
+.tool-code code {
+  font: inherit;
+}
+
+.tok-keyword {
+  color: #93c5fd;
+  font-weight: 700;
+}
+
+.tok-string {
+  color: #86efac;
+}
+
+.tok-comment {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.tok-number {
+  color: #fcd34d;
+}
+
+.tok-property {
+  color: #c4b5fd;
+}
+
+.tool-notice {
+  padding: 9px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.tool-notice.info {
+  border: 1px solid #bfdbfe;
+  background: #eff6ff;
+  color: #1e40af;
+}
+
+.tool-notice.warning {
+  border: 1px solid #fde68a;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.chat-message.tool pre.tool-body {
+  display: block;
+  padding: 10px 12px;
+  overflow: auto;
+  background: #111827;
+  color: #e5e7eb;
+  white-space: pre-wrap;
 }
 
 .chat-message.chart {
@@ -924,10 +1179,7 @@ pre {
 .tool-body {
   min-height: auto;
   margin: 0;
-  background: #111827;
-  color: #e5e7eb;
   font-size: 13px;
-  white-space: pre-wrap;
 }
 
 @media (max-width: 780px) {

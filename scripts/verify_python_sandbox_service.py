@@ -27,9 +27,9 @@ figure_path = Path("/workspace/output/correlation_analysis.png")
 summary = df.groupby("category", as_index=False)["amount"].sum()
 fig, ax = plt.subplots(figsize=(6, 4), dpi=120)
 ax.bar(summary["category"], summary["amount"])
-ax.set_title("Sandbox verification chart")
-ax.set_xlabel("category")
-ax.set_ylabel("amount")
+ax.set_title("沙箱中文图表验证")
+ax.set_xlabel("商品类别")
+ax.set_ylabel("销售金额")
 fig.tight_layout()
 fig.savefig(figure_path)
 plt.close(fig)
@@ -55,9 +55,9 @@ Path("/workspace/output/result.json").write_text(
     result = PythonSandboxService().run_analysis(
         dataframe=pd.DataFrame(
             [
-                {"category": "A", "amount": 10},
-                {"category": "A", "amount": 20},
-                {"category": "B", "amount": 5},
+                {"category": "类别A", "amount": 10},
+                {"category": "类别A", "amount": 20},
+                {"category": "类别B", "amount": 5},
             ]
         ),
         analysis_goal="验证 PythonSandboxService 能通过 Docker 执行脚本并读取 result.json",

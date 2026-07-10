@@ -93,7 +93,7 @@ class ContextService:
                 history.append(HumanMessage(content=content))
             elif role == "assistant":
                 history.append(AIMessage(content=content))
-            elif role in {"tool", "chart"}:
+            elif role in {"tool", "chart", "plan"}:
                 history.append(SystemMessage(content=content))
 
         return history
@@ -203,6 +203,8 @@ class ContextService:
                 f"chart:{message.get('title', '')}\n"
                 f"type={message.get('chart_type', '')}; url={message.get('chart_url', '')}"
             )
+        if role == "plan":
+            return f"plan:{message.get('plan', {})}"
         return ""
 
     def _get_token_counter_model(self):

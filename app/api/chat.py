@@ -181,6 +181,18 @@ def chat_stream(req: ChatRequest) -> StreamingResponse:
                             "name": event.get("name"),
                             "args": event.get("args", {}),
                             "result": event.get("result", ""),
+                            "duration_ms": event.get("duration_ms"),
+                            "duration_label": event.get("duration_label"),
+                            "success": event.get("success"),
+                        }
+                    )
+                elif event.get("type") == "plan":
+                    flush_assistant_text()
+                    saved_messages.append(
+                        {
+                            "role": "plan",
+                            "type": "plan",
+                            "plan": event.get("plan", {}),
                         }
                     )
                 elif event.get("type") == "chart":

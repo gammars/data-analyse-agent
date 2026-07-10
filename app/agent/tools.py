@@ -299,22 +299,43 @@ def make_python_analysis_tool(
                 max_rows=max_rows,
             )
             if dataframe.empty:
-                return "Python 沙箱分析未执行：SQL 查询成功，但结果为空。"
+                return json.dumps(
+                    {
+                        "ok": False,
+                        "error": {
+                            "type": "EmptySQLResult",
+                            "message": "Python 沙箱分析未执行：SQL 查询成功，但结果为空。",
+                            "recoverable": True,
+                        },
+                    },
+                    ensure_ascii=False,
+                )
             sandbox_result = python_sandbox_service.run_analysis(
                 dataframe=dataframe,
                 python_code=python_code,
                 analysis_goal=analysis_goal,
             )
         except Exception as exc:
-            return (
-                "Python 沙箱分析失败："
-                f"{exc}\n"
-                "请检查 SQL 是否为 SQLite 只读 SELECT/WITH，Python 代码是否读取 "
-                "/workspace/input/data.json，并写出 /workspace/output/result.json。"
+            return json.dumps(
+                {
+                    "ok": False,
+                    "error": {
+                        "type": exc.__class__.__name__,
+                        "message": (
+                            "Python 沙箱分析失败："
+                            f"{exc}\n"
+                            "请检查 SQL 是否为 SQLite 只读 SELECT/WITH，Python 代码是否读取 "
+                            "/workspace/input/data.json，并写出 /workspace/output/result.json。"
+                        ),
+                        "recoverable": True,
+                    },
+                },
+                ensure_ascii=False,
             )
 
         return json.dumps(
             {
+                "ok": True,
                 "run_id": sandbox_result.run_id,
                 "analysis_goal": sandbox_result.analysis_goal,
                 "input_rows": sandbox_result.input_rows,
@@ -330,6 +351,10 @@ def make_python_analysis_tool(
                 ],
                 "stdout": sandbox_result.stdout,
                 "stderr": sandbox_result.stderr,
+                "warnings": _build_python_analysis_warnings(
+                    sandbox_result.result,
+                    sandbox_result.stderr,
+                ),
                 "message": "Python 沙箱分析已完成。",
             },
             ensure_ascii=False,
@@ -345,6 +370,16 @@ def make_python_analysis_tool(
         func=_run,
         args_schema=PythonAnalysisArgs,
     )
+
+
+def _build_python_analysis_warnings(result: dict, stderr: str) -> list[str]:
+    warnings = []
+    result_warnings = result.get("warnings") if isinstance(result, dict) else None
+    if isinstance(result_warnings, list):
+        warnings.extend(str(item) for item in result_warnings if str(item).strip())
+    if stderr.strip():
+        warnings.append("Python 脚本 stderr 包含警告或诊断信息，分析结果已成功生成。")
+    return warnings
 
 
 def build_tools(

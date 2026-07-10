@@ -618,10 +618,16 @@ function renderConversationMessages(messages) {
       if (message.type === "tool_start") {
         createToolCard(message.name, message.args || {});
       } else {
-        completeToolCard(message.name, message.args || {}, parseToolResult(message.result || ""));
+        completeToolCard(message.name, message.args || {}, parseToolResult(message.result || ""), {
+          duration_ms: message.duration_ms,
+          duration_label: message.duration_label,
+          success: message.success,
+        });
       }
     } else if (message.role === "chart") {
       appendChartMessage(message);
+    } else if (message.role === "plan") {
+      appendPlanMessage(message.plan || {});
     }
   }
 }
@@ -1245,16 +1251,9 @@ function createToolCard(name, args) {
 
   summary.append(title, status);
 
-  const body = document.createElement("pre");
+  const body = document.createElement("div");
   body.className = "message-body tool-body";
-  body.textContent = JSON.stringify(
-    {
-      args,
-      result: "",
-    },
-    null,
-    2,
-  );
+  renderToolBody(body, name, args, null, { running: true });
 
   card.append(summary, body);
   chatLog.append(card);
@@ -1263,25 +1262,341 @@ function createToolCard(name, args) {
   return card;
 }
 
-function completeToolCard(name, args, result) {
+function completeToolCard(name, args, result, metadata = {}) {
   const key = toolCardKey(name, args);
   const existing = pendingToolCards.get(key);
   const cardInfo = existing || getLatestToolCardByName(name) || createDetachedToolCard(name, args);
 
-  cardInfo.body.textContent = JSON.stringify(
-    {
-      args,
-      result,
-    },
-    null,
-    2,
-  );
-  cardInfo.status.textContent = "完成";
+  const durationLabel = metadata.duration_label || formatDuration(metadata.duration_ms);
+  const success = metadata.success !== false;
+  renderToolBody(cardInfo.body, name, args, result, metadata);
+  cardInfo.status.textContent = `${success ? "完成" : "失败"}${durationLabel ? ` · ${durationLabel}` : ""}`;
   cardInfo.status.classList.remove("running");
-  cardInfo.status.classList.add("done");
+  cardInfo.status.classList.add(success ? "done" : "error");
   cardInfo.card.open = false;
   pendingToolCards.delete(key);
   chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+function formatDuration(durationMs) {
+  if (durationMs === undefined || durationMs === null || Number.isNaN(Number(durationMs))) {
+    return "";
+  }
+  const safeDuration = Math.max(Number(durationMs), 0);
+  if (safeDuration < 1000) {
+    return `${Math.round(safeDuration)}ms`;
+  }
+  const seconds = safeDuration / 1000;
+  if (seconds < 60) {
+    return `${seconds.toFixed(2)}s`;
+  }
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds - minutes * 60;
+  return `${minutes}m ${remainingSeconds.toFixed(1)}s`;
+}
+
+function renderToolBody(target, name, args, result, metadata = {}) {
+  target.replaceChildren();
+  if (name === "python_analysis") {
+    renderPythonAnalysisToolBody(target, args, result, metadata);
+    return;
+  }
+  renderGenericToolBody(target, args, result, metadata);
+}
+
+function renderPythonAnalysisToolBody(target, args, result, metadata = {}) {
+  const normalizedResult = result && typeof result === "object" ? result : {};
+  const resultPayload =
+    normalizedResult.result && typeof normalizedResult.result === "object"
+      ? normalizedResult.result
+      : {};
+  const meta = document.createElement("div");
+  meta.className = "tool-meta-grid";
+  meta.append(
+    createToolMetaItem("数据集", shortText(args.dataset_id || "-")),
+    createToolMetaItem("输入行数", normalizedResult.input_rows ?? "-"),
+    createToolMetaItem("最大行数", args.max_rows ?? "-"),
+    createToolMetaItem("运行 ID", shortText(normalizedResult.run_id || "-")),
+  );
+  target.append(meta);
+
+  const goal = args.analysis_goal || normalizedResult.analysis_goal;
+  if (goal) {
+    target.append(createTextSection("分析目标", goal));
+  }
+  if (args.sql) {
+    target.append(createCodeSection("SQL 查询", args.sql, "sql", { open: true }));
+  }
+  if (args.python_code) {
+    target.append(createCodeSection("Python 代码", args.python_code, "python", { open: false }));
+  }
+
+  if (metadata.running) {
+    target.append(createNotice("info", "工具正在执行，结果生成后会显示摘要、图表和日志。"));
+    return;
+  }
+  if (normalizedResult.error) {
+    target.append(createErrorSection(normalizedResult.error));
+    return;
+  }
+
+  const summary =
+    resultPayload.summary ||
+    resultPayload.conclusion ||
+    normalizedResult.message ||
+    "Python 沙箱分析已完成。";
+  target.append(createTextSection("结果摘要", summary));
+
+  if (resultPayload.metrics && typeof resultPayload.metrics === "object") {
+    target.append(createMetricsSection(resultPayload.metrics));
+  }
+
+  const warnings = Array.isArray(normalizedResult.warnings) ? normalizedResult.warnings : [];
+  for (const warning of warnings) {
+    target.append(createNotice("warning", warning));
+  }
+  if (normalizedResult.stdout) {
+    target.append(createCodeSection("stdout", normalizedResult.stdout, "text", { open: false }));
+  }
+  if (normalizedResult.stderr) {
+    target.append(createCodeSection("stderr", normalizedResult.stderr, "text", { open: false }));
+  }
+}
+
+function renderGenericToolBody(target, args, result, metadata = {}) {
+  const restArgs = { ...(args || {}) };
+  const sql = restArgs.sql;
+  delete restArgs.sql;
+
+  if (sql) {
+    target.append(createCodeSection("SQL 查询", sql, "sql", { open: true }));
+  }
+  if (Object.keys(restArgs).length) {
+    target.append(createJsonSection("工具参数", restArgs, { open: true }));
+  }
+  if (metadata.running) {
+    target.append(createNotice("info", "工具正在执行。"));
+    return;
+  }
+  target.append(createJsonSection("输出结果", result, { open: true }));
+}
+
+function createToolMetaItem(label, value) {
+  const item = document.createElement("div");
+  item.className = "tool-meta-item";
+  const labelEl = document.createElement("span");
+  labelEl.textContent = label;
+  const valueEl = document.createElement("strong");
+  valueEl.textContent = String(value);
+  item.append(labelEl, valueEl);
+  return item;
+}
+
+function createTextSection(title, text) {
+  const section = document.createElement("section");
+  section.className = "tool-section";
+  const heading = document.createElement("h4");
+  heading.textContent = title;
+  const paragraph = document.createElement("p");
+  paragraph.textContent = String(text);
+  section.append(heading, paragraph);
+  return section;
+}
+
+function createMetricsSection(metrics) {
+  const section = document.createElement("section");
+  section.className = "tool-section";
+  const heading = document.createElement("h4");
+  heading.textContent = "核心指标";
+  const grid = document.createElement("div");
+  grid.className = "tool-metrics-grid";
+  Object.entries(metrics).forEach(([key, value]) => {
+    grid.append(createToolMetaItem(key, formatMetricValue(value)));
+  });
+  section.append(heading, grid);
+  return section;
+}
+
+function createErrorSection(error) {
+  const section = document.createElement("section");
+  section.className = "tool-section tool-error-section";
+  const heading = document.createElement("h4");
+  heading.textContent = error.type || "工具执行失败";
+  const message = document.createElement("p");
+  message.textContent = error.message || String(error);
+  section.append(heading, message);
+  return section;
+}
+
+function createJsonSection(title, value, options = {}) {
+  const text = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+  return createCodeSection(title, text, "json", options);
+}
+
+function createCodeSection(title, code, language, options = {}) {
+  const details = document.createElement("details");
+  details.className = "tool-section tool-code-section";
+  details.open = options.open !== false;
+
+  const summary = document.createElement("summary");
+  summary.className = "tool-section-header";
+  const label = document.createElement("span");
+  label.textContent = title;
+  const meta = document.createElement("span");
+  meta.className = "tool-code-meta";
+  meta.textContent = `${language.toUpperCase()} · ${countLines(code)} 行`;
+  const copyButton = document.createElement("button");
+  copyButton.type = "button";
+  copyButton.className = "tool-copy-button";
+  copyButton.textContent = "复制";
+  copyButton.addEventListener("click", async (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    await copyTextToClipboard(String(code || ""));
+    copyButton.textContent = "已复制";
+    window.setTimeout(() => {
+      copyButton.textContent = "复制";
+    }, 1200);
+  });
+  summary.append(label, meta, copyButton);
+
+  const pre = document.createElement("pre");
+  pre.className = `tool-code language-${language}`;
+  const codeEl = document.createElement("code");
+  codeEl.innerHTML = highlightCode(String(code || ""), language);
+  pre.append(codeEl);
+  details.append(summary, pre);
+  return details;
+}
+
+function createNotice(type, text) {
+  const notice = document.createElement("div");
+  notice.className = `tool-notice ${type}`;
+  notice.textContent = String(text);
+  return notice;
+}
+
+function highlightCode(code, language) {
+  if (language === "python") {
+    return highlightPython(code);
+  }
+  if (language === "sql") {
+    return highlightSql(code);
+  }
+  if (language === "json") {
+    return highlightJson(code);
+  }
+  return escapeHtml(code);
+}
+
+function highlightPython(code) {
+  let html = escapeHtml(code);
+  const placeholders = [];
+  html = protectCodeSpans(
+    html,
+    /(?:&quot;&quot;&quot;[\s\S]*?&quot;&quot;&quot;|&#39;&#39;&#39;[\s\S]*?&#39;&#39;&#39;|&quot;(?:\\.|[^\\])*?&quot;|&#39;(?:\\.|[^\\])*?&#39;)/g,
+    placeholders,
+    "string",
+  );
+  html = protectCodeSpans(html, /(^|\s)(#.*)$/gm, placeholders, "comment");
+  html = html.replace(
+    /\b(False|None|True|and|as|assert|async|await|break|class|continue|def|del|elif|else|except|finally|for|from|global|if|import|in|is|lambda|nonlocal|not|or|pass|raise|return|try|while|with|yield)\b/g,
+    '<span class="tok-keyword">$1</span>',
+  );
+  html = html.replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="tok-number">$1</span>');
+  return restoreCodeSpans(html, placeholders);
+}
+
+function highlightSql(code) {
+  let html = escapeHtml(code);
+  const placeholders = [];
+  html = protectCodeSpans(html, /(?:&quot;(?:\\.|[^\\])*?&quot;|&#39;(?:\\.|[^\\])*?&#39;)/g, placeholders, "string");
+  html = protectCodeSpans(html, /(^|\s)(--.*$)/gm, placeholders, "comment");
+  html = html.replace(
+    /\b(SELECT|FROM|WHERE|JOIN|LEFT|RIGHT|INNER|OUTER|ON|GROUP|BY|ORDER|LIMIT|OFFSET|HAVING|WITH|AS|AND|OR|NOT|NULL|IS|IN|LIKE|CASE|WHEN|THEN|ELSE|END|COUNT|SUM|AVG|MIN|MAX|DISTINCT|UNION|ALL|DESC|ASC)\b/gi,
+    '<span class="tok-keyword">$1</span>',
+  );
+  html = html.replace(/\b(\d+(?:\.\d+)?)\b/g, '<span class="tok-number">$1</span>');
+  return restoreCodeSpans(html, placeholders);
+}
+
+function highlightJson(code) {
+  return escapeHtml(code)
+    .replace(/(&quot;[^&]*?&quot;)(?=\s*:)/g, '<span class="tok-property">$1</span>')
+    .replace(/:\s*(&quot;.*?&quot;)/g, ': <span class="tok-string">$1</span>')
+    .replace(/\b(true|false|null)\b/g, '<span class="tok-keyword">$1</span>')
+    .replace(/\b(-?\d+(?:\.\d+)?)\b/g, '<span class="tok-number">$1</span>');
+}
+
+function protectCodeSpans(html, pattern, placeholders, tokenClass) {
+  return html.replace(pattern, (...args) => {
+    const match = args[0];
+    const prefix = tokenClass === "comment" && typeof args[1] === "string" ? args[1] : "";
+    const value = prefix && match.startsWith(prefix) ? match.slice(prefix.length) : match;
+    const token = makePlaceholder(placeholders.length);
+    placeholders.push(`<span class="tok-${tokenClass}">${value}</span>`);
+    return `${prefix}${token}`;
+  });
+}
+
+function restoreCodeSpans(html, placeholders) {
+  return placeholders.reduce(
+    (current, value, index) => current.replaceAll(makePlaceholder(index), value),
+    html,
+  );
+}
+
+function makePlaceholder(index) {
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  let remaining = index;
+  let value = "";
+  do {
+    value = letters[remaining % letters.length] + value;
+    remaining = Math.floor(remaining / letters.length) - 1;
+  } while (remaining >= 0);
+  return `§CODETOKEN${value}§`;
+}
+
+function countLines(code) {
+  const text = String(code || "");
+  return text ? text.split(/\r?\n/).length : 0;
+}
+
+function shortText(value) {
+  const text = String(value || "");
+  if (text.length <= 14) {
+    return text;
+  }
+  return `${text.slice(0, 8)}...${text.slice(-4)}`;
+}
+
+function formatMetricValue(value) {
+  if (typeof value === "number") {
+    return Number.isInteger(value) ? value : Number(value.toFixed(6));
+  }
+  if (typeof value === "string") {
+    return value;
+  }
+  return JSON.stringify(value);
+}
+
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return;
+    } catch {
+      // Fall back for non-secure origins or browser clipboard restrictions.
+    }
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.append(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  textarea.remove();
 }
 
 function getLatestToolCardByName(name) {
@@ -1309,6 +1624,66 @@ function appendToolMessage(title, data) {
   message.append(label, body);
   chatLog.append(message);
   chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+function appendPlanMessage(plan) {
+  clearThinkingMessage();
+  const message = document.createElement("div");
+  message.className = "chat-message plan";
+
+  const label = document.createElement("div");
+  label.className = "message-label";
+  label.textContent = "执行计划";
+
+  const body = document.createElement("div");
+  body.className = "message-body plan-body";
+
+  const summary = document.createElement("div");
+  summary.className = "plan-summary";
+  summary.append(
+    createPlanPill("模式", plan.mode || "-"),
+    createPlanPill("主意图", plan.primary_intent || "-"),
+    createPlanPill("步骤", `${Array.isArray(plan.steps) ? plan.steps.length : 0}/5`),
+  );
+
+  const goal = document.createElement("p");
+  goal.className = "plan-goal";
+  goal.textContent = plan.user_goal || "将按计划执行当前分析任务。";
+
+  const list = document.createElement("ol");
+  list.className = "plan-step-list";
+  const steps = Array.isArray(plan.steps) ? plan.steps : [];
+  for (const step of steps) {
+    const item = document.createElement("li");
+    item.className = "plan-step";
+
+    const title = document.createElement("div");
+    title.className = "plan-step-title";
+    title.textContent = step.goal || step.step_id || "计划步骤";
+
+    const meta = document.createElement("div");
+    meta.className = "plan-step-meta";
+    meta.append(
+      createPlanPill("意图", step.intent || "-"),
+      createPlanPill("工具", (step.allowed_tools || []).join(" / ") || "-"),
+      createPlanPill("重试", step.retry_limit ?? 0),
+    );
+
+    item.append(title, meta);
+    list.append(item);
+  }
+
+  body.append(summary, goal, list);
+  message.append(label, body);
+  chatLog.append(message);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+function createPlanPill(label, value) {
+  const pill = document.createElement("span");
+  pill.className = "plan-pill";
+  pill.textContent = `${label}: ${value}`;
+  return pill;
 }
 
 function appendChartMessage(chart) {
@@ -1382,6 +1757,11 @@ function handleChatEvent(eventData, assistantContent) {
     return assistantContent;
   }
 
+  if (eventData.type === "plan") {
+    appendPlanMessage(eventData.plan || {});
+    return assistantContent;
+  }
+
   if (eventData.type === "tool_reason") {
     appendChatMessage("assistant", eventData.content || "我需要先调用工具获取准确结果。");
     return null;
@@ -1397,6 +1777,11 @@ function handleChatEvent(eventData, assistantContent) {
       eventData.name,
       eventData.args || {},
       parseToolResult(eventData.result),
+      {
+        duration_ms: eventData.duration_ms,
+        duration_label: eventData.duration_label,
+        success: eventData.success,
+      },
     );
     return assistantContent;
   }

@@ -1,6 +1,12 @@
 from langchain_core.messages import AIMessage, ToolMessage
 
-from app.agent.runtime import _generate_tool_reason, _latest_tool_result
+from app.agent.runtime import (
+    _format_duration_ms,
+    _generate_tool_reason,
+    _latest_tool_result,
+    _tool_result_indicates_error,
+    _tool_result_success,
+)
 
 
 class FakeReasonModel:
@@ -59,3 +65,14 @@ def test_latest_tool_result_uses_most_recent_message() -> None:
     ]
 
     assert _latest_tool_result(messages) == "latest"
+
+
+def test_tool_result_error_detection_and_duration_format() -> None:
+    assert _tool_result_indicates_error("Python 沙箱分析失败：boom") is True
+    assert _tool_result_indicates_error("图表已生成：销售趋势") is False
+    assert _tool_result_success('{"ok": true, "stderr": "mkdir failed but recovered"}') is True
+    assert _tool_result_success('{"ok": false, "error": {"message": "boom"}}') is False
+    assert _tool_result_success("Python 沙箱分析失败：boom") is False
+    assert _format_duration_ms(120) == "120ms"
+    assert _format_duration_ms(1234) == "1.23s"
+    assert _format_duration_ms(65_500) == "1m 5.5s"
