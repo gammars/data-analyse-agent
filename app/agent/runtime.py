@@ -4,16 +4,22 @@ import time
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_core.runnables import Runnable
 
+from app.agent.artifacts import build_tool_artifacts
 from app.agent.graph import build_agent_graph, make_agent_node
 from app.agent.models import build_chat_model
 from app.agent.planner import ExecutionPlan, PlanStep, build_execution_plan
 from app.agent.prompts import build_system_message
+from app.agent.scope_router import classify_scope
 from app.agent.tool_policy import MAX_PLAN_STEPS
 from app.agent.tools import build_tools
 from app.services.analysis_service import AnalysisService
 from app.services.chart_service import ChartService
 from app.services.dataset_service import DatasetService
 from app.services.sql_service import SQLService
+from app.services.tool_memory_service import (
+    PendingToolFailure,
+    ToolMemoryService,
+)
 
 
 MAX_TOOL_ROUNDS = 20
@@ -81,6 +87,28 @@ def stream_data_agent_events(
 
     yield {
         "type": "thinking",
+        "content": "正在判断问题是否适合当前数据集...",
+    }
+    scope_decision = classify_scope(
+        scope_model=reason_model,
+        user_question=message,
+        schema_text=schema_text,
+    )
+    yield {
+        "type": "scope",
+        "scope": scope_decision.model_dump(),
+    }
+    if not scope_decision.should_plan:
+        response = scope_decision.response.strip() or "这个问题不需要进入数据分析计划。"
+        yield {
+            "type": "text_delta",
+            "content": response,
+        }
+        yield {"type": "done"}
+        return
+
+    yield {
+        "type": "thinking",
         "content": "正在生成执行计划...",
     }
     plan = build_execution_plan(
@@ -92,6 +120,7 @@ def stream_data_agent_events(
         "type": "plan",
         "plan": plan.model_dump(),
     }
+    memory_service = ToolMemoryService(dataset_service.dataset_dir)
 
     for step_index, step in enumerate(plan.steps[:MAX_PLAN_STEPS], start=1):
         selected_tools = [
@@ -114,7 +143,36 @@ def stream_data_agent_events(
             "retry_limit": step.retry_limit,
         }
 
-        messages.append(HumanMessage(content=_build_step_instruction(plan, step, step_index)))
+        memory_context, selected_memories = memory_service.build_prompt_context(
+            dataset_id=dataset_id,
+            schema_text=schema_text,
+            tool_names=step.allowed_tools,
+            user_question=message,
+        )
+        if selected_memories:
+            yield {
+                "type": "memory_context",
+                "step_id": step.step_id,
+                "count": len(selected_memories),
+                "memories": [
+                    {
+                        "memory_id": memory.memory_id,
+                        "lesson": memory.lesson,
+                    }
+                    for memory in selected_memories
+                ],
+            }
+
+        messages.append(
+            HumanMessage(
+                content=_build_step_instruction(
+                    plan,
+                    step,
+                    step_index,
+                    memory_context=memory_context,
+                )
+            )
+        )
         model_with_tools = reason_model.bind_tools(selected_tools)
         step_success = yield from _execute_plan_step(
             model_with_tools=model_with_tools,
@@ -123,6 +181,9 @@ def stream_data_agent_events(
             tools_by_name={tool.name: tool for tool in selected_tools},
             user_question=message,
             step=step,
+            dataset_id=dataset_id,
+            schema_text=schema_text,
+            memory_service=memory_service,
         )
 
         yield {
@@ -155,9 +216,13 @@ def _execute_plan_step(
     tools_by_name: dict,
     user_question: str,
     step: PlanStep,
+    dataset_id: str,
+    schema_text: str,
+    memory_service: ToolMemoryService,
 ) -> bool:
     failed_attempts = 0
     step_success = False
+    pending_failures: list[PendingToolFailure] = []
 
     for round_index in range(MAX_STEP_TOOL_ROUNDS):
         yield {
@@ -228,12 +293,77 @@ def _execute_plan_step(
                 "success": tool_success,
             }
 
+            artifacts = build_tool_artifacts(
+                step_id=step.step_id,
+                tool_name=tool_name,
+                tool_args=tool_args,
+                result=result,
+                success=tool_success,
+                duration_ms=duration_ms,
+            )
+            for artifact in artifacts:
+                yield {
+                    "type": "artifact",
+                    "artifact": artifact.model_dump(),
+                }
+
             for chart_event in _try_build_chart_events(result):
                 yield chart_event
 
+            tool_message_content = _message_content_to_text(result)
+            if tool_success:
+                eligible_failure = next(
+                    (
+                        pending
+                        for pending in reversed(pending_failures)
+                        if pending.created_at_round < round_index
+                    ),
+                    None,
+                )
+                if eligible_failure is not None:
+                    memory = memory_service.record_success_after_failure(
+                        dataset_id=dataset_id,
+                        schema_text=schema_text,
+                        pending_failure=eligible_failure,
+                        successful_tool_name=tool_name,
+                        successful_tool_args=tool_args,
+                    )
+                    if memory is not None:
+                        pending_failures.clear()
+                        yield {
+                            "type": "memory_write",
+                            "step_id": step.step_id,
+                            "memory": {
+                                "memory_id": memory.memory_id,
+                                "memory_type": memory.memory_type,
+                                "lesson": memory.lesson,
+                            },
+                        }
+            else:
+                reflection = memory_service.reflect_failure(
+                    tool_name=tool_name,
+                    tool_args=tool_args,
+                    result=result,
+                )
+                if reflection is not None:
+                    pending_failures.append(
+                        PendingToolFailure(
+                            tool_name=tool_name,
+                            tool_args=tool_args,
+                            result=tool_message_content,
+                            reflection=reflection,
+                            created_at_round=round_index,
+                        )
+                    )
+                    tool_message_content = (
+                        f"{tool_message_content}\n\n"
+                        f"失败反思：{reflection.retry_hint}\n"
+                        "请基于当前 schema 修正 SQL，下一次调用不要重复同一错误。"
+                    )
+
             messages.append(
                 ToolMessage(
-                    content=result,
+                    content=tool_message_content,
                     tool_call_id=tool_call["id"],
                 )
             )
@@ -260,9 +390,14 @@ def _execute_plan_step(
     return step_success
 
 
-def _build_step_instruction(plan: ExecutionPlan, step: PlanStep, step_index: int) -> str:
+def _build_step_instruction(
+    plan: ExecutionPlan,
+    step: PlanStep,
+    step_index: int,
+    memory_context: str = "",
+) -> str:
     allowed_tools = "、".join(step.allowed_tools)
-    return (
+    instruction = (
         f"现在执行计划 {plan.plan_id} 的第 {step_index}/{len(plan.steps)} 步。\n"
         f"用户原始目标：{plan.user_goal}\n"
         f"当前步骤意图：{step.intent}\n"
@@ -274,6 +409,9 @@ def _build_step_instruction(plan: ExecutionPlan, step: PlanStep, step_index: int
         "如果本步骤需要工具，必须只从允许工具中选择；不要尝试调用本步骤未列出的工具。"
         "如果信息不足以安全执行，请直接说明需要用户补充什么。"
     )
+    if memory_context:
+        instruction = f"{instruction}\n\n{memory_context}"
+    return instruction
 
 
 def _stream_model_message(model_with_tools: Runnable, messages: list) -> AIMessage:

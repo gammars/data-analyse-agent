@@ -1,0 +1,78 @@
+{
+  "schema_version": 1,
+  "protocol_version": "baseline-protocol-v1",
+  "system_version": "baseline-v1",
+  "frozen_at": "2026-07-21T00:00:00+08:00",
+  "task_scope": {
+    "primary_task": "deterministic_multi_table_data_analysis",
+    "open_ended_report_evaluation": false,
+    "required_oracle": true
+  },
+  "execution": {
+    "entrypoint": "app.agent.runtime.stream_data_agent_events",
+    "api_route": "/api/chat/stream",
+    "pipeline": [
+      "scope_router",
+      "one_shot_planner",
+      "step_scoped_tool_execution",
+      "final_synthesis"
+    ],
+    "max_plan_steps": 5,
+    "max_step_tool_rounds": 6,
+    "legacy_non_stream_max_tool_rounds": 20,
+    "include_legacy_non_stream_in_primary_evaluation": false
+  },
+  "model": {
+    "provider_protocol": "openai_compatible",
+    "model": "LongCat-2.0",
+    "base_url": "https://api.longcat.chat/openai/v1",
+    "temperature": 0.1,
+    "streaming": true
+  },
+  "prompt_versions": {
+    "planner": {
+      "version": "planner-v1",
+      "sha256": "bdea4267ee88e898888f3416fa53ce2237e62a8d52bad3aecdc1d7a533139cba"
+    },
+    "scope_router": {
+      "version": "scope-v1",
+      "sha256": "42ec1cf10d797d897170aefebb1c30e5c38b5fc9afe52f8daa33206ff79e1b22"
+    },
+    "system_tool": {
+      "version": "system-tool-v1",
+      "sha256": "d184403afc28f30f501bfebc0a5e5a9cad393d319b9e09650dcf8cee17aa30a9"
+    }
+  },
+  "metrics": [
+    "answer_accuracy",
+    "execution_success_rate",
+    "tool_selection_accuracy",
+    "average_tool_calls",
+    "average_latency_ms",
+    "token_usage",
+    "estimated_cost"
+  ],
+  "pricing": {
+    "currency": "USD",
+    "input_price_per_million_tokens": null,
+    "output_price_per_million_tokens": null,
+    "source": null,
+    "retrieved_at": null,
+    "missing_price_policy": "estimated_cost_must_be_null"
+  },
+  "git": {
+    "branch": "main",
+    "base_commit": "0e28896664da4847d98262175bd32545a85f0345",
+    "worktree_was_dirty": true,
+    "snapshot_path": "evals/snapshots/baseline_v1/worktree_changes.zip",
+    "snapshot_sha256": "0a0aeb7c25b3e1e91f69cd58ee8a4409780cc4652a431ad6769e4a238be2c22c",
+    "snapshot_size_bytes": 2302329,
+    "snapshot_status_entry_count": 18
+  },
+  "immutability_policy": {
+    "overwrite_frozen_config": false,
+    "prompt_change_requires_new_version": true,
+    "runtime_change_requires_new_system_version": true,
+    "overwrite_raw_traces": false
+  }
+}

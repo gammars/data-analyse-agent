@@ -489,14 +489,19 @@ pre {
   background: #f7f8fa;
 }
 
+.chat-composer {
+  position: sticky;
+  bottom: 0;
+  display: grid;
+  gap: 8px;
+  padding: 10px 0 2px;
+  background: #f7f8fa;
+}
+
 .chat-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
-  position: sticky;
-  bottom: 0;
-  padding: 12px 0 2px;
-  background: #f7f8fa;
 }
 
 .chat-log {
@@ -748,9 +753,232 @@ pre {
   white-space: normal;
 }
 
+.chat-message.scope .message-body {
+  display: block;
+  width: 100%;
+  border-color: #dbeafe;
+  background: #f8fbff;
+  color: #334155;
+  white-space: normal;
+}
+
+.chat-message.artifact .message-body {
+  display: block;
+  width: 100%;
+  border-color: #d9e2ec;
+  background: #fbfcfe;
+  color: #334155;
+  white-space: normal;
+}
+
+.chat-message.scope-out_of_scope .message-body {
+  border-color: #fecaca;
+  background: #fff7f7;
+}
+
+.chat-message.scope-needs_clarification .message-body {
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+
+.chat-message.scope-general_help .message-body {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+.scope-body {
+  display: grid;
+  gap: 8px;
+}
+
+.scope-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.scope-reason {
+  margin: 0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.artifact-body {
+  display: grid;
+  gap: 9px;
+}
+
+.artifact-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.artifact-title {
+  margin: 0;
+  color: #1f2937;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.artifact-description {
+  margin: 0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
 .plan-body {
   display: grid;
   gap: 10px;
+}
+
+.plan-console {
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.plan-console[hidden] {
+  display: none;
+}
+
+.plan-console-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  padding: 9px 12px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.plan-console-summary::-webkit-details-marker {
+  display: none;
+}
+
+.plan-console-title {
+  overflow: hidden;
+  color: #1f2937;
+  font-size: 14px;
+  font-weight: 800;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-console-meta {
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.plan-console-body {
+  display: grid;
+  gap: 9px;
+  max-height: 320px;
+  overflow: auto;
+  padding: 0 12px 12px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.plan-console-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 10px;
+}
+
+.plan-console-goal {
+  margin: 0;
+  color: #475569;
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.plan-console-step-list {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.plan-console-step {
+  padding: 8px 9px;
+  border: 1px solid #e2e8f0;
+  border-left-width: 4px;
+  border-radius: 6px;
+  background: #ffffff;
+}
+
+.plan-console-step.step-pending {
+  border-left-color: #cbd5e1;
+}
+
+.plan-console-step.step-running {
+  border-left-color: #2563eb;
+  background: #f8fbff;
+}
+
+.plan-console-step.step-done {
+  border-left-color: #16a34a;
+}
+
+.plan-console-step.step-failed {
+  border-left-color: #dc2626;
+  background: #fff7f7;
+}
+
+.plan-console-step-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.plan-console-step-title {
+  color: #1f2937;
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.45;
+}
+
+.plan-status-badge {
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.plan-status-badge.status-pending {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.plan-status-badge.status-running {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.plan-status-badge.status-done {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.plan-status-badge.status-failed {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.plan-console-criteria {
+  margin: 7px 0 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.5;
 }
 
 .plan-summary,
@@ -1211,15 +1439,15 @@ pre {
     max-height: none;
   }
 
-  .chat-form {
-    align-items: stretch;
-    flex-direction: column;
+  .chat-composer {
     position: static;
     padding-bottom: 0;
   }
 
   .chat-form {
     display: flex;
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .metrics {

@@ -1,0 +1,8 @@
+{"id":"scope_001","dataset":"ecommerce_small","question":"统计每种订单状态的订单数量","expected":{"scope":"in_scope","should_plan":true},"notes":"典型数据相关统计问题"}
+{"id":"scope_002","dataset":"ecommerce_small","question":"明年股市会好起来没啊","expected":{"scope":"out_of_scope","should_plan":false},"notes":"当前电商 schema 不支持股市预测"}
+{"id":"scope_003","dataset":"ecommerce_small","question":"python_analysis 是怎么运行 Docker 的？","expected":{"scope":"general_help","should_plan":false},"notes":"系统工具说明"}
+{"id":"scope_004","dataset":"ecommerce_small","question":"今天杭州天气怎么样","expected":{"scope":"out_of_scope","should_plan":false},"notes":"需要外部实时天气数据"}
+{"id":"scope_005","dataset":"ecommerce_small","question":"画出每月销售额趋势图","expected":{"scope":"in_scope","should_plan":true},"notes":"数据相关图表问题"}
+{"id":"scope_006","dataset":"ecommerce_small","question":"这个系统怎么用，如何上传数据？","expected":{"scope":"general_help","should_plan":false},"notes":"系统使用说明"}
+{"id":"scope_007","dataset":"finance_small","question":"分析这只股票的收盘价趋势","expected":{"scope":"in_scope","should_plan":true},"notes":"金融 schema 支持股票领域"}
+{"id":"scope_008","dataset":"ecommerce_small","question":"根据订单数据判断客户评分和物流时长有没有关系","expected":{"scope":"in_scope","should_plan":true},"notes":"当前数据集可支持"}

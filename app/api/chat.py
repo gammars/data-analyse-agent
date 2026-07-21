@@ -195,6 +195,31 @@ def chat_stream(req: ChatRequest) -> StreamingResponse:
                             "plan": event.get("plan", {}),
                         }
                     )
+                elif event.get("type") in {"plan_step_start", "plan_step_end"}:
+                    saved_messages.append(
+                        {
+                            "role": "plan_step",
+                            "type": event.get("type"),
+                            "plan_id": event.get("plan_id"),
+                            "step_id": event.get("step_id"),
+                            "step_index": event.get("step_index"),
+                            "total_steps": event.get("total_steps"),
+                            "intent": event.get("intent"),
+                            "goal": event.get("goal"),
+                            "allowed_tools": event.get("allowed_tools", []),
+                            "retry_limit": event.get("retry_limit"),
+                            "success": event.get("success"),
+                        }
+                    )
+                elif event.get("type") == "scope":
+                    flush_assistant_text()
+                    saved_messages.append(
+                        {
+                            "role": "scope",
+                            "type": "scope",
+                            "scope": event.get("scope", {}),
+                        }
+                    )
                 elif event.get("type") == "chart":
                     saved_messages.append(
                         {
@@ -204,6 +229,25 @@ def chat_stream(req: ChatRequest) -> StreamingResponse:
                             "chart_type": event.get("chart_type"),
                             "title": event.get("title"),
                             "chart_url": event.get("chart_url"),
+                        }
+                    )
+                elif event.get("type") == "artifact":
+                    saved_messages.append(
+                        {
+                            "role": "artifact",
+                            "type": "artifact",
+                            "artifact": event.get("artifact", {}),
+                        }
+                    )
+                elif event.get("type") in {"memory_context", "memory_write"}:
+                    saved_messages.append(
+                        {
+                            "role": "memory",
+                            "type": event.get("type"),
+                            "step_id": event.get("step_id"),
+                            "count": event.get("count"),
+                            "memories": event.get("memories", []),
+                            "memory": event.get("memory", {}),
                         }
                     )
                 elif event.get("type") == "text_delta":

@@ -2,6 +2,11 @@ from typing import Any
 
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage
 
+from app.agent.artifacts import (
+    artifact_context_text,
+    sanitize_tool_args_for_context,
+    tool_result_context_preview,
+)
 from app.agent.models import build_chat_model
 
 
@@ -78,7 +83,7 @@ class ContextService:
                 SystemMessage(
                     content=(
                         "以下是较早对话的压缩摘要，用于延续上下文。"
-                        "摘要可能省略无关工具日志，但保留用户目标、关键结论、图表和重要字段。\n\n"
+                        "摘要可能省略无关工具日志和原始大结果，但保留用户目标、关键结论、图表、分析产物和重要字段。\n\n"
                         f"{summary}"
                     )
                 )
@@ -93,7 +98,7 @@ class ContextService:
                 history.append(HumanMessage(content=content))
             elif role == "assistant":
                 history.append(AIMessage(content=content))
-            elif role in {"tool", "chart", "plan"}:
+            elif role in {"tool", "chart", "plan", "scope", "artifact"}:
                 history.append(SystemMessage(content=content))
 
         return history
@@ -167,8 +172,8 @@ class ContextService:
         source = "\n\n".join(self._message_to_context_text(message) for message in messages)
         prompt = (
             "请把下面的数据分析对话压缩成可继续对话的上下文摘要。"
-            "保留：用户目标、绑定数据集相关信息、字段名、SQL/工具关键结果、图表结论、未完成事项。"
-            "省略重复工具日志和无关客套。用中文，控制在 800 字以内。\n\n"
+            "保留：用户目标、绑定数据集相关信息、字段名、SQL/工具关键结果、图表结论、分析产物摘要、未完成事项。"
+            "省略重复工具日志、原始大 JSON、完整代码和无关客套。用中文，控制在 800 字以内。\n\n"
             f"已有摘要：\n{existing_summary or '无'}\n\n"
             f"需要压缩的新内容：\n{source}"
         )
@@ -195,16 +200,23 @@ class ContextService:
         if role == "tool":
             return (
                 f"tool:{message.get('name', '')}:{message_type}\n"
-                f"args={message.get('args', {})}\n"
-                f"result={message.get('result', '')}"
+                f"args={sanitize_tool_args_for_context(message.get('args', {}))}\n"
+                f"result_preview={tool_result_context_preview(message.get('name', ''), message.get('result', ''))}"
             )
         if role == "chart":
             return (
                 f"chart:{message.get('title', '')}\n"
                 f"type={message.get('chart_type', '')}; url={message.get('chart_url', '')}"
             )
+        if role == "artifact":
+            artifact = message.get("artifact", {})
+            if isinstance(artifact, dict):
+                return artifact_context_text(artifact)
+            return ""
         if role == "plan":
             return f"plan:{message.get('plan', {})}"
+        if role == "scope":
+            return f"scope:{message.get('scope', {})}"
         return ""
 
     def _get_token_counter_model(self):

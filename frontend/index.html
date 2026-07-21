@@ -137,16 +137,25 @@
 
           <section class="chat-panel">
             <div id="chat-log" class="chat-log" hidden></div>
-            <form id="chat-form" class="chat-form">
-              <input
-                id="question-input"
-                type="text"
-                placeholder="统计每个类别的销售额总和。"
-                autocomplete="off"
-                required
-              />
-              <button type="submit">提问</button>
-            </form>
+            <div class="chat-composer">
+              <details id="plan-console" class="plan-console" hidden open>
+                <summary class="plan-console-summary">
+                  <span class="plan-console-title">执行计划</span>
+                  <span id="plan-console-meta" class="plan-console-meta">等待计划</span>
+                </summary>
+                <div id="plan-console-body" class="plan-console-body"></div>
+              </details>
+              <form id="chat-form" class="chat-form">
+                <input
+                  id="question-input"
+                  type="text"
+                  placeholder="统计每个类别的销售额总和。"
+                  autocomplete="off"
+                  required
+                />
+                <button type="submit">提问</button>
+              </form>
+            </div>
           </section>
         </section>
       </section>

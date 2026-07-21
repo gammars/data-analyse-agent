@@ -1,0 +1,7 @@
+{"id":"planner_001","dataset":"ecommerce_small","question":"统计每种订单状态的订单数量","expected":{"primary_intent":"query","must_include_intents":["query"],"must_use_tools":["query_data"],"max_steps":5}}
+{"id":"planner_002","dataset":"ecommerce_small","question":"画出每月销售额趋势图","expected":{"primary_intent":"chart","must_include_intents":["chart"],"must_use_tools":["generate_chart"],"max_steps":5}}
+{"id":"planner_003","dataset":"ecommerce_small","question":"分析商品价格和运费之间的相关性热力图","expected":{"primary_intent":"advanced","must_include_intents":["advanced"],"must_use_tools":["python_analysis"],"max_steps":5}}
+{"id":"planner_004","dataset":"ecommerce_small","question":"检查数据质量、缺失值和异常值","expected":{"primary_intent":"quality","must_include_intents":["quality"],"must_use_tools":["missing_value_analysis"],"max_steps":5}}
+{"id":"planner_005","dataset":"ecommerce_small","question":"请画销售趋势图，并做聚类分析","expected":{"primary_intent":"mixed","must_include_intents":["chart","advanced"],"must_use_tools":["generate_chart","python_analysis"],"max_steps":5}}
+{"id":"planner_006","dataset":"ecommerce_small","question":"帮我清洗数据，先给建议，不要修改","expected":{"primary_intent":"cleaning","must_include_intents":["cleaning"],"must_use_tools":["suggest_cleaning"],"must_not_use_tools":["apply_cleaning"],"max_steps":5}}
+{"id":"planner_007","dataset":"ecommerce_small","question":"确认执行清洗，去掉重复行","expected":{"primary_intent":"cleaning","must_include_intents":["cleaning"],"must_use_tools":["apply_cleaning"],"max_steps":5}}

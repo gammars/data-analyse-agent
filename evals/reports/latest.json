@@ -1,0 +1,770 @@
+{
+  "summary": {
+    "total": 31,
+    "passed": 31,
+    "failed": 0,
+    "skipped": 0,
+    "pass_rate": 1.0
+  },
+  "suites": {
+    "scope": {
+      "total": 8,
+      "passed": 8,
+      "failed": 0,
+      "skipped": 0,
+      "cases": [
+        {
+          "id": "scope_001",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "统计每种订单状态的订单数量",
+            "expected": {
+              "scope": "in_scope",
+              "should_plan": true
+            },
+            "actual": {
+              "scope": "in_scope",
+              "should_plan": true
+            }
+          }
+        },
+        {
+          "id": "scope_002",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "明年股市会好起来没啊",
+            "expected": {
+              "scope": "out_of_scope",
+              "should_plan": false
+            },
+            "actual": {
+              "scope": "out_of_scope",
+              "should_plan": false,
+              "intent": "external_finance",
+              "reason": "用户问题需要当前数据集之外的外部领域数据，当前 schema 无法支持该分析。"
+            }
+          }
+        },
+        {
+          "id": "scope_003",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "python_analysis 是怎么运行 Docker 的？",
+            "expected": {
+              "scope": "general_help",
+              "should_plan": false
+            },
+            "actual": {
+              "scope": "general_help",
+              "should_plan": false,
+              "intent": "system_help",
+              "reason": "用户在询问系统、工具、Docker、Planner 或项目使用方式，不需要分析当前数据集。"
+            }
+          }
+        },
+        {
+          "id": "scope_004",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "今天杭州天气怎么样",
+            "expected": {
+              "scope": "out_of_scope",
+              "should_plan": false
+            },
+            "actual": {
+              "scope": "out_of_scope",
+              "should_plan": false,
+              "intent": "external_weather",
+              "reason": "用户问题需要当前数据集之外的外部领域数据，当前 schema 无法支持该分析。"
+            }
+          }
+        },
+        {
+          "id": "scope_005",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "画出每月销售额趋势图",
+            "expected": {
+              "scope": "in_scope",
+              "should_plan": true
+            },
+            "actual": {
+              "scope": "in_scope",
+              "should_plan": true
+            }
+          }
+        },
+        {
+          "id": "scope_006",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "这个系统怎么用，如何上传数据？",
+            "expected": {
+              "scope": "general_help",
+              "should_plan": false
+            },
+            "actual": {
+              "scope": "general_help",
+              "should_plan": false,
+              "intent": "system_help",
+              "reason": "用户在询问系统、工具、Docker、Planner 或项目使用方式，不需要分析当前数据集。"
+            }
+          }
+        },
+        {
+          "id": "scope_007",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "分析这只股票的收盘价趋势",
+            "expected": {
+              "scope": "in_scope",
+              "should_plan": true
+            },
+            "actual": {
+              "scope": "in_scope",
+              "should_plan": true
+            }
+          }
+        },
+        {
+          "id": "scope_008",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "根据订单数据判断客户评分和物流时长有没有关系",
+            "expected": {
+              "scope": "in_scope",
+              "should_plan": true
+            },
+            "actual": {
+              "scope": "in_scope",
+              "should_plan": true
+            }
+          }
+        }
+      ]
+    },
+    "planner": {
+      "total": 7,
+      "passed": 7,
+      "failed": 0,
+      "skipped": 0,
+      "cases": [
+        {
+          "id": "planner_001",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "统计每种订单状态的订单数量",
+            "expected": {
+              "primary_intent": "query",
+              "must_include_intents": [
+                "query"
+              ],
+              "must_use_tools": [
+                "query_data"
+              ],
+              "max_steps": 5
+            },
+            "actual": {
+              "primary_intent": "query",
+              "intents": [
+                "query"
+              ],
+              "tools": [
+                "query_data"
+              ],
+              "step_count": 1
+            }
+          }
+        },
+        {
+          "id": "planner_002",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "画出每月销售额趋势图",
+            "expected": {
+              "primary_intent": "chart",
+              "must_include_intents": [
+                "chart"
+              ],
+              "must_use_tools": [
+                "generate_chart"
+              ],
+              "max_steps": 5
+            },
+            "actual": {
+              "primary_intent": "chart",
+              "intents": [
+                "chart"
+              ],
+              "tools": [
+                "generate_chart"
+              ],
+              "step_count": 1
+            }
+          }
+        },
+        {
+          "id": "planner_003",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "分析商品价格和运费之间的相关性热力图",
+            "expected": {
+              "primary_intent": "advanced",
+              "must_include_intents": [
+                "advanced"
+              ],
+              "must_use_tools": [
+                "python_analysis"
+              ],
+              "max_steps": 5
+            },
+            "actual": {
+              "primary_intent": "advanced",
+              "intents": [
+                "advanced"
+              ],
+              "tools": [
+                "python_analysis"
+              ],
+              "step_count": 1
+            }
+          }
+        },
+        {
+          "id": "planner_004",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "检查数据质量、缺失值和异常值",
+            "expected": {
+              "primary_intent": "quality",
+              "must_include_intents": [
+                "quality"
+              ],
+              "must_use_tools": [
+                "missing_value_analysis"
+              ],
+              "max_steps": 5
+            },
+            "actual": {
+              "primary_intent": "quality",
+              "intents": [
+                "quality"
+              ],
+              "tools": [
+                "profile_data",
+                "missing_value_analysis",
+                "descriptive_statistics",
+                "correlation_analysis",
+                "outlier_detection"
+              ],
+              "step_count": 1
+            }
+          }
+        },
+        {
+          "id": "planner_005",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "请画销售趋势图，并做聚类分析",
+            "expected": {
+              "primary_intent": "mixed",
+              "must_include_intents": [
+                "chart",
+                "advanced"
+              ],
+              "must_use_tools": [
+                "generate_chart",
+                "python_analysis"
+              ],
+              "max_steps": 5
+            },
+            "actual": {
+              "primary_intent": "mixed",
+              "intents": [
+                "advanced",
+                "chart"
+              ],
+              "tools": [
+                "python_analysis",
+                "generate_chart"
+              ],
+              "step_count": 2
+            }
+          }
+        },
+        {
+          "id": "planner_006",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "帮我清洗数据，先给建议，不要修改",
+            "expected": {
+              "primary_intent": "cleaning",
+              "must_include_intents": [
+                "cleaning"
+              ],
+              "must_use_tools": [
+                "suggest_cleaning"
+              ],
+              "must_not_use_tools": [
+                "apply_cleaning"
+              ],
+              "max_steps": 5
+            },
+            "actual": {
+              "primary_intent": "cleaning",
+              "intents": [
+                "cleaning"
+              ],
+              "tools": [
+                "suggest_cleaning"
+              ],
+              "step_count": 1
+            }
+          }
+        },
+        {
+          "id": "planner_007",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "确认执行清洗，去掉重复行",
+            "expected": {
+              "primary_intent": "cleaning",
+              "must_include_intents": [
+                "cleaning"
+              ],
+              "must_use_tools": [
+                "apply_cleaning"
+              ],
+              "max_steps": 5
+            },
+            "actual": {
+              "primary_intent": "cleaning",
+              "intents": [
+                "cleaning"
+              ],
+              "tools": [
+                "apply_cleaning"
+              ],
+              "step_count": 1
+            }
+          }
+        }
+      ]
+    },
+    "tool_routing": {
+      "total": 6,
+      "passed": 6,
+      "failed": 0,
+      "skipped": 0,
+      "cases": [
+        {
+          "id": "route_001",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "每个支付方式的订单数量是多少",
+            "expected": {
+              "must_use_tools": [
+                "query_data"
+              ],
+              "must_not_use_tools": [
+                "python_analysis",
+                "generate_chart",
+                "apply_cleaning"
+              ]
+            },
+            "actual": {
+              "primary_intent": "query",
+              "intents": [
+                "query"
+              ],
+              "tools": [
+                "query_data"
+              ],
+              "step_count": 1
+            }
+          }
+        },
+        {
+          "id": "route_002",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "画出不同支付方式占比饼图",
+            "expected": {
+              "must_use_tools": [
+                "generate_chart"
+              ],
+              "must_not_use_tools": [
+                "python_analysis",
+                "apply_cleaning"
+              ]
+            },
+            "actual": {
+              "primary_intent": "chart",
+              "intents": [
+                "chart"
+              ],
+              "tools": [
+                "generate_chart"
+              ],
+              "step_count": 1
+            }
+          }
+        },
+        {
+          "id": "route_003",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "对客户按消费金额和订单数做聚类",
+            "expected": {
+              "must_use_tools": [
+                "python_analysis"
+              ],
+              "must_not_use_tools": [
+                "query_data",
+                "apply_cleaning"
+              ]
+            },
+            "actual": {
+              "primary_intent": "advanced",
+              "intents": [
+                "advanced"
+              ],
+              "tools": [
+                "python_analysis"
+              ],
+              "step_count": 1
+            }
+          }
+        },
+        {
+          "id": "route_004",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "统计销售额并画柱状图",
+            "expected": {
+              "must_use_tools": [
+                "query_data",
+                "generate_chart"
+              ],
+              "must_not_use_tools": [
+                "python_analysis",
+                "apply_cleaning"
+              ]
+            },
+            "actual": {
+              "primary_intent": "mixed",
+              "intents": [
+                "chart",
+                "query"
+              ],
+              "tools": [
+                "generate_chart",
+                "query_data"
+              ],
+              "step_count": 2
+            }
+          }
+        },
+        {
+          "id": "route_005",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "检查缺失值",
+            "expected": {
+              "must_use_tools": [
+                "missing_value_analysis"
+              ],
+              "must_not_use_tools": [
+                "python_analysis",
+                "apply_cleaning"
+              ]
+            },
+            "actual": {
+              "primary_intent": "quality",
+              "intents": [
+                "quality"
+              ],
+              "tools": [
+                "profile_data",
+                "missing_value_analysis",
+                "descriptive_statistics",
+                "correlation_analysis",
+                "outlier_detection"
+              ],
+              "step_count": 1
+            }
+          }
+        },
+        {
+          "id": "route_006",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "恢复原始数据，撤销清洗",
+            "expected": {
+              "must_use_tools": [
+                "reset_cleaning"
+              ],
+              "must_not_use_tools": [
+                "apply_cleaning"
+              ]
+            },
+            "actual": {
+              "primary_intent": "cleaning",
+              "intents": [
+                "cleaning"
+              ],
+              "tools": [
+                "reset_cleaning"
+              ],
+              "step_count": 1
+            }
+          }
+        }
+      ]
+    },
+    "sql": {
+      "total": 5,
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "cases": [
+        {
+          "id": "sql_001",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "统计每种订单状态的订单数量",
+            "sql": "SELECT order_status, COUNT(*) AS order_count FROM orders GROUP BY order_status ORDER BY order_status",
+            "actual_rows": [
+              {
+                "order_status": "delivered",
+                "order_count": 5
+              },
+              {
+                "order_status": "shipped",
+                "order_count": 1
+              }
+            ]
+          }
+        },
+        {
+          "id": "sql_002",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "找出销售额最高的前 3 个商品类别",
+            "sql": "SELECT p.product_category_name, SUM(i.price) AS total_price FROM order_items AS i JOIN products AS p ON i.product_id = p.product_id GROUP BY p.product_category_name ORDER BY total_price DESC LIMIT 3",
+            "actual_rows": [
+              {
+                "product_category_name": "electronics",
+                "total_price": 520
+              },
+              {
+                "product_category_name": "books",
+                "total_price": 350
+              },
+              {
+                "product_category_name": "home",
+                "total_price": 80
+              }
+            ]
+          }
+        },
+        {
+          "id": "sql_003",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "计算每月销售额趋势",
+            "sql": "SELECT substr(o.order_purchase_timestamp, 1, 7) AS month, SUM(i.price) AS total_price FROM orders AS o JOIN order_items AS i ON o.order_id = i.order_id GROUP BY month ORDER BY month",
+            "actual_rows": [
+              {
+                "month": "2024-01",
+                "total_price": 300
+              },
+              {
+                "month": "2024-02",
+                "total_price": 200
+              },
+              {
+                "month": "2024-03",
+                "total_price": 450
+              }
+            ]
+          }
+        },
+        {
+          "id": "sql_004",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "危险 SQL 应被拒绝",
+            "error": "只允许 SELECT / WITH 查询"
+          }
+        },
+        {
+          "id": "sql_005",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "WITH 中包含 DELETE 应被拒绝",
+            "error": "SQL 包含不允许执行的操作"
+          }
+        }
+      ]
+    },
+    "python": {
+      "total": 5,
+      "passed": 5,
+      "failed": 0,
+      "skipped": 0,
+      "cases": [
+        {
+          "id": "py_001",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "分析价格和运费之间的相关性并生成热力图",
+            "tools": [
+              "python_analysis"
+            ],
+            "artifact": {
+              "artifact_id": "artifact-ece1e6333540",
+              "step_id": "step_1",
+              "type": "python_result",
+              "title": "分析价格和运费之间的相关性并生成热力图",
+              "summary": "价格和运费之间存在正相关，已生成相关性热力图。",
+              "source_tool": "python_analysis",
+              "success": true,
+              "preview": {
+                "run_id": "eval-run",
+                "input_rows": 6,
+                "duration_ms": 321,
+                "metrics": {
+                  "price_freight_corr": 0.82
+                },
+                "figures": [
+                  {
+                    "chart_id": "eval-chart",
+                    "chart_url": "/charts/eval-chart.png",
+                    "chart_type": "heatmap",
+                    "title": "价格与运费相关性热力图"
+                  }
+                ],
+                "warnings": []
+              },
+              "content": {
+                "summary": "价格和运费之间存在正相关，已生成相关性热力图。",
+                "metrics": {
+                  "price_freight_corr": 0.82
+                },
+                "figures": [
+                  {
+                    "chart_id": "eval-chart",
+                    "chart_url": "/charts/eval-chart.png",
+                    "chart_type": "heatmap",
+                    "title": "价格与运费相关性热力图"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "id": "py_002",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "禁止 requests 网络访问",
+            "error": "Python 代码第 1 行导入了禁止模块：requests"
+          }
+        },
+        {
+          "id": "py_003",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "禁止 subprocess",
+            "error": "Python 代码第 1 行导入了禁止模块：subprocess"
+          }
+        },
+        {
+          "id": "py_004",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "question": "禁止读写 workspace 外绝对路径",
+            "error": "Python 代码第 2 行包含非 /workspace 绝对路径：/etc/passwd"
+          }
+        },
+        {
+          "id": "py_docker_001",
+          "passed": true,
+          "skipped": false,
+          "message": "",
+          "details": {
+            "run_id": "816810d9-1c81-464b-8e07-0921defe2a19",
+            "result": {
+              "summary": "docker sandbox eval ok",
+              "metrics": {
+                "total_amount": 30
+              },
+              "figures": []
+            }
+          }
+        }
+      ]
+    }
+  }
+}

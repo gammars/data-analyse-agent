@@ -1,0 +1,6 @@
+{"id":"route_001","dataset":"ecommerce_small","question":"每个支付方式的订单数量是多少","expected":{"must_use_tools":["query_data"],"must_not_use_tools":["python_analysis","generate_chart","apply_cleaning"]}}
+{"id":"route_002","dataset":"ecommerce_small","question":"画出不同支付方式占比饼图","expected":{"must_use_tools":["generate_chart"],"must_not_use_tools":["python_analysis","apply_cleaning"]}}
+{"id":"route_003","dataset":"ecommerce_small","question":"对客户按消费金额和订单数做聚类","expected":{"must_use_tools":["python_analysis"],"must_not_use_tools":["query_data","apply_cleaning"]}}
+{"id":"route_004","dataset":"ecommerce_small","question":"统计销售额并画柱状图","expected":{"must_use_tools":["query_data","generate_chart"],"must_not_use_tools":["python_analysis","apply_cleaning"]}}
+{"id":"route_005","dataset":"ecommerce_small","question":"检查缺失值","expected":{"must_use_tools":["missing_value_analysis"],"must_not_use_tools":["python_analysis","apply_cleaning"]}}
+{"id":"route_006","dataset":"ecommerce_small","question":"恢复原始数据，撤销清洗","expected":{"must_use_tools":["reset_cleaning"],"must_not_use_tools":["apply_cleaning"]}}

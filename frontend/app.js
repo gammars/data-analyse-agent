@@ -11,6 +11,9 @@ const tableList = document.querySelector("#table-list");
 const chatForm = document.querySelector("#chat-form");
 const questionInput = document.querySelector("#question-input");
 const chatLog = document.querySelector("#chat-log");
+const planConsole = document.querySelector("#plan-console");
+const planConsoleMeta = document.querySelector("#plan-console-meta");
+const planConsoleBody = document.querySelector("#plan-console-body");
 const datasetSelect = document.querySelector("#dataset-select");
 const renameDatasetButton = document.querySelector("#rename-dataset-button");
 const deleteDatasetButton = document.querySelector("#delete-dataset-button");
@@ -42,6 +45,7 @@ let datasets = [];
 let conversations = [];
 let pendingToolCards = new Map();
 let thinkingMessage = null;
+let currentPlanState = null;
 let relationshipSuggestions = null;
 let relationshipConfigurationStatus = "confirmed";
 let relationshipLoading = false;
@@ -607,6 +611,7 @@ function renderConversationMessages(messages) {
   chatLog.replaceChildren();
   pendingToolCards = new Map();
   thinkingMessage = null;
+  resetPlanConsole();
   chatLog.hidden = messages.length === 0;
 
   for (const message of messages) {
@@ -614,6 +619,8 @@ function renderConversationMessages(messages) {
       appendChatMessage("user", message.content || "");
     } else if (message.role === "assistant") {
       appendChatMessage("assistant", message.content || "");
+    } else if (message.role === "scope") {
+      appendScopeMessage(message.scope || {});
     } else if (message.role === "tool") {
       if (message.type === "tool_start") {
         createToolCard(message.name, message.args || {});
@@ -627,7 +634,13 @@ function renderConversationMessages(messages) {
     } else if (message.role === "chart") {
       appendChartMessage(message);
     } else if (message.role === "plan") {
-      appendPlanMessage(message.plan || {});
+      showPlanConsole(message.plan || {});
+    } else if (message.role === "plan_step") {
+      updatePlanStepStatus(message, planStepEventStatus(message));
+    } else if (message.role === "artifact") {
+      appendArtifactMessage(message.artifact || {});
+    } else if (message.role === "memory") {
+      appendMemoryMessage(message.type === "memory_write" ? "write" : "context", message);
     }
   }
 }
@@ -920,6 +933,7 @@ chatForm.addEventListener("submit", async (event) => {
   const button = chatForm.querySelector("button");
   button.disabled = true;
   chatLog.hidden = false;
+  resetPlanConsole();
   appendChatMessage("user", message);
   questionInput.value = "";
   let assistantContent = null;
@@ -980,6 +994,7 @@ newConversationButton.addEventListener("click", async () => {
   chatLog.replaceChildren();
   updateContextMeter(null);
   pendingToolCards = new Map();
+  resetPlanConsole();
   renderConversationList();
   showStatus("已准备新对话，发送第一条消息后会自动保存。");
 });
@@ -1626,54 +1641,231 @@ function appendToolMessage(title, data) {
   chatLog.scrollTop = chatLog.scrollHeight;
 }
 
-function appendPlanMessage(plan) {
+function appendScopeMessage(scope) {
   clearThinkingMessage();
   const message = document.createElement("div");
-  message.className = "chat-message plan";
+  message.className = `chat-message scope scope-${scope.scope || "unknown"}`;
 
   const label = document.createElement("div");
   label.className = "message-label";
-  label.textContent = "执行计划";
+  label.textContent = "意图识别";
 
   const body = document.createElement("div");
-  body.className = "message-body plan-body";
+  body.className = "message-body scope-body";
 
   const summary = document.createElement("div");
-  summary.className = "plan-summary";
+  summary.className = "scope-summary";
   summary.append(
-    createPlanPill("模式", plan.mode || "-"),
-    createPlanPill("主意图", plan.primary_intent || "-"),
-    createPlanPill("步骤", `${Array.isArray(plan.steps) ? plan.steps.length : 0}/5`),
+    createPlanPill("范围", scope.scope || "-"),
+    createPlanPill("意图", scope.intent || "-"),
+    createPlanPill("进入计划", scope.should_plan ? "是" : "否"),
+  );
+
+  const reason = document.createElement("p");
+  reason.className = "scope-reason";
+  reason.textContent = scope.reason || "已完成问题范围判断。";
+
+  body.append(summary, reason);
+  message.append(label, body);
+  chatLog.append(message);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+function resetPlanConsole() {
+  currentPlanState = null;
+  planConsole.hidden = true;
+  planConsoleMeta.textContent = "等待计划";
+  planConsoleBody.replaceChildren();
+}
+
+function showPlanConsole(plan) {
+  const steps = Array.isArray(plan.steps) ? plan.steps : [];
+  currentPlanState = {
+    ...plan,
+    steps: steps.map((step, index) => ({
+      ...step,
+      step_index: index + 1,
+      status: step.status || "pending",
+    })),
+  };
+  planConsole.hidden = false;
+  planConsole.open = true;
+  renderPlanConsole();
+}
+
+function updatePlanStepStatus(eventData, status) {
+  if (!currentPlanState) {
+    return;
+  }
+  const stepId = eventData.step_id;
+  currentPlanState.steps = currentPlanState.steps.map((step) => {
+    if (step.step_id !== stepId) {
+      return step;
+    }
+    return {
+      ...step,
+      status,
+      step_index: eventData.step_index || step.step_index,
+      total_steps: eventData.total_steps || step.total_steps,
+      intent: eventData.intent || step.intent,
+      goal: eventData.goal || step.goal,
+      allowed_tools: eventData.allowed_tools || step.allowed_tools,
+      retry_limit: eventData.retry_limit ?? step.retry_limit,
+    };
+  });
+  renderPlanConsole();
+}
+
+function renderPlanConsole() {
+  if (!currentPlanState) {
+    resetPlanConsole();
+    return;
+  }
+
+  const steps = Array.isArray(currentPlanState.steps) ? currentPlanState.steps : [];
+  const finished = steps.filter((step) => ["done", "failed"].includes(step.status)).length;
+  const failed = steps.some((step) => step.status === "failed");
+  const running = steps.some((step) => step.status === "running");
+  const stateLabel = failed ? "有失败步骤" : running ? "执行中" : finished === steps.length && steps.length ? "已完成" : "待执行";
+  planConsoleMeta.textContent = `${stateLabel} · ${finished}/${steps.length || 0}`;
+
+  planConsoleBody.replaceChildren();
+
+  const header = document.createElement("div");
+  header.className = "plan-console-header";
+  header.append(
+    createPlanPill("模式", currentPlanState.mode || "-"),
+    createPlanPill("主意图", currentPlanState.primary_intent || "-"),
+    createPlanPill("步骤", `${steps.length}/5`),
   );
 
   const goal = document.createElement("p");
-  goal.className = "plan-goal";
-  goal.textContent = plan.user_goal || "将按计划执行当前分析任务。";
+  goal.className = "plan-console-goal";
+  goal.textContent = currentPlanState.user_goal || "将按计划执行当前分析任务。";
 
   const list = document.createElement("ol");
-  list.className = "plan-step-list";
-  const steps = Array.isArray(plan.steps) ? plan.steps : [];
+  list.className = "plan-console-step-list";
   for (const step of steps) {
-    const item = document.createElement("li");
-    item.className = "plan-step";
-
-    const title = document.createElement("div");
-    title.className = "plan-step-title";
-    title.textContent = step.goal || step.step_id || "计划步骤";
-
-    const meta = document.createElement("div");
-    meta.className = "plan-step-meta";
-    meta.append(
-      createPlanPill("意图", step.intent || "-"),
-      createPlanPill("工具", (step.allowed_tools || []).join(" / ") || "-"),
-      createPlanPill("重试", step.retry_limit ?? 0),
-    );
-
-    item.append(title, meta);
-    list.append(item);
+    list.append(createPlanConsoleStep(step));
   }
 
-  body.append(summary, goal, list);
+  planConsoleBody.append(header, goal, list);
+}
+
+function createPlanConsoleStep(step) {
+  const item = document.createElement("li");
+  item.className = `plan-console-step step-${step.status || "pending"}`;
+
+  const top = document.createElement("div");
+  top.className = "plan-console-step-top";
+
+  const title = document.createElement("div");
+  title.className = "plan-console-step-title";
+  title.textContent = step.goal || step.step_id || "计划步骤";
+
+  const badge = document.createElement("span");
+  badge.className = `plan-status-badge status-${step.status || "pending"}`;
+  badge.textContent = planStepStatusLabel(step.status);
+
+  top.append(title, badge);
+
+  const meta = document.createElement("div");
+  meta.className = "plan-step-meta";
+  meta.append(
+    createPlanPill("意图", step.intent || "-"),
+    createPlanPill("工具", (step.allowed_tools || []).join(" / ") || "-"),
+    createPlanPill("重试", step.retry_limit ?? 0),
+  );
+
+  item.append(top, meta);
+  if (step.success_criteria) {
+    const criteria = document.createElement("p");
+    criteria.className = "plan-console-criteria";
+    criteria.textContent = step.success_criteria;
+    item.append(criteria);
+  }
+  return item;
+}
+
+function planStepStatusLabel(status) {
+  if (status === "running") {
+    return "执行中";
+  }
+  if (status === "done") {
+    return "完成";
+  }
+  if (status === "failed") {
+    return "失败";
+  }
+  return "等待";
+}
+
+function planStepEventStatus(eventData) {
+  if (eventData.type !== "plan_step_end") {
+    return "running";
+  }
+  return eventData.success === false ? "failed" : "done";
+}
+
+function appendArtifactMessage(artifact) {
+  clearThinkingMessage();
+  const message = document.createElement("div");
+  message.className = `chat-message artifact artifact-${artifact.type || "unknown"}`;
+
+  const label = document.createElement("div");
+  label.className = "message-label";
+  label.textContent = "分析产物";
+
+  const body = document.createElement("div");
+  body.className = "message-body artifact-body";
+
+  const summary = document.createElement("div");
+  summary.className = "artifact-summary";
+  summary.append(
+    createPlanPill("类型", artifact.type || "-"),
+    createPlanPill("来源", artifact.source_tool || "-"),
+    createPlanPill("状态", artifact.success === false ? "失败" : "成功"),
+  );
+
+  const title = document.createElement("h4");
+  title.className = "artifact-title";
+  title.textContent = artifact.title || "分析产物";
+
+  const description = document.createElement("p");
+  description.className = "artifact-description";
+  description.textContent = artifact.summary || "已保存工具输出摘要。";
+
+  body.append(summary, title, description);
+  if (artifact.preview !== undefined && artifact.preview !== null) {
+    body.append(createJsonSection("预览", artifact.preview, { open: false }));
+  }
+
+  message.append(label, body);
+  chatLog.append(message);
+  chatLog.scrollTop = chatLog.scrollHeight;
+}
+
+function appendMemoryMessage(kind, payload) {
+  clearThinkingMessage();
+  const message = document.createElement("div");
+  message.className = "chat-message artifact artifact-memory";
+
+  const label = document.createElement("div");
+  label.className = "message-label";
+  label.textContent = kind === "write" ? "数据集经验" : "历史经验";
+
+  const body = document.createElement("div");
+  body.className = "message-body artifact-body";
+  const description = document.createElement("p");
+  description.className = "artifact-description";
+
+  if (kind === "write") {
+    description.textContent = `已记录本数据集经验：${payload.memory?.lesson || "本轮修复已确认"}`;
+  } else {
+    description.textContent = `已应用 ${payload.count || 0} 条本数据集历史经验`;
+  }
+
+  body.append(description);
   message.append(label, body);
   chatLog.append(message);
   chatLog.scrollTop = chatLog.scrollHeight;
@@ -1757,8 +1949,33 @@ function handleChatEvent(eventData, assistantContent) {
     return assistantContent;
   }
 
+  if (eventData.type === "scope") {
+    appendScopeMessage(eventData.scope || {});
+    return assistantContent;
+  }
+
   if (eventData.type === "plan") {
-    appendPlanMessage(eventData.plan || {});
+    showPlanConsole(eventData.plan || {});
+    return assistantContent;
+  }
+
+  if (eventData.type === "plan_step_start") {
+    updatePlanStepStatus(eventData, "running");
+    return assistantContent;
+  }
+
+  if (eventData.type === "plan_step_end") {
+    updatePlanStepStatus(eventData, eventData.success === false ? "failed" : "done");
+    return assistantContent;
+  }
+
+  if (eventData.type === "memory_context") {
+    appendMemoryMessage("context", eventData);
+    return assistantContent;
+  }
+
+  if (eventData.type === "memory_write") {
+    appendMemoryMessage("write", eventData);
     return assistantContent;
   }
 
@@ -1788,6 +2005,11 @@ function handleChatEvent(eventData, assistantContent) {
 
   if (eventData.type === "chart") {
     appendChartMessage(eventData);
+    return assistantContent;
+  }
+
+  if (eventData.type === "artifact") {
+    appendArtifactMessage(eventData.artifact || {});
     return assistantContent;
   }
 

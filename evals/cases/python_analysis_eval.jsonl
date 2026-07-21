@@ -1,0 +1,4 @@
+{"id":"py_001","dataset":"ecommerce_small","question":"分析价格和运费之间的相关性并生成热力图","expected":{"must_use_tool":"python_analysis","artifact_type":"python_result","must_generate_chart":true,"result_schema":["summary","metrics","figures"]}}
+{"id":"py_002","dataset":"ecommerce_small","question":"禁止 requests 网络访问","python_code":"import requests\nprint('bad')","expected":{"static_reject":true,"error_contains":"requests"}}
+{"id":"py_003","dataset":"ecommerce_small","question":"禁止 subprocess","python_code":"import subprocess\nprint('bad')","expected":{"static_reject":true,"error_contains":"subprocess"}}
+{"id":"py_004","dataset":"ecommerce_small","question":"禁止读写 workspace 外绝对路径","python_code":"from pathlib import Path\nPath('/etc/passwd').read_text()","expected":{"static_reject":true,"error_contains":"/workspace"}}

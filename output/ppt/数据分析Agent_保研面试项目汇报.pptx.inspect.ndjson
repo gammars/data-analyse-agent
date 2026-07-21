@@ -1,0 +1,258 @@
+{"kind":"deck","id":"pr/l3uad3","name":"Deck"}
+{"kind":"layout","layoutId":"e2336e13-45f6-46d6-9f38-41416992f695","name":"Master","type":"master"}
+{"kind":"layout","layoutId":"980205ac-a013-4edb-bd4f-31ad96922a63","name":"Title Slide","type":"title"}
+{"kind":"slide","id":"sl/jate7n","slide":1,"title":"保研面试项目汇报","textShapes":10}
+{"kind":"shape","id":"sh/ryp4v61o","slide":1,"bbox":[0,0,16,720]}
+{"kind":"textbox","id":"sh/sji54bi9","slide":1,"text":"保研面试项目汇报","textPreview":"保研面试项目汇报","textChars":8,"textLines":1,"bbox":[58,45,320,34]}
+{"kind":"textbox","id":"sh/dkrmxgju","slide":1,"text":"让大模型安全地\n分析本地多表数据","textPreview":"让大模型安全地 | 分析本地多表数据","textChars":16,"textLines":2,"bbox":[58,175,780,178]}
+{"kind":"textbox","id":"sh/itgnyh07","slide":1,"text":"Data Analyse Agent","textPreview":"Data Analyse Agent","textChars":18,"textLines":1,"bbox":[58,378,520,40]}
+{"kind":"textbox","id":"sh/3up4rm1s","slide":1,"text":"结构化规划  ×  SQL / Python 双执行引擎","textPreview":"结构化规划  ×  SQL / Python 双执行引擎","textChars":28,"textLines":1,"bbox":[58,430,680,42]}
+{"kind":"shape","id":"sh/4vy50rid","slide":1,"bbox":[852,160,330,350]}
+{"kind":"textbox","id":"sh/5w7mtwjy","slide":1,"text":"项目目标","textPreview":"项目目标","textChars":4,"textLines":1,"bbox":[886,196,250,30]}
+{"kind":"textbox","id":"sh/2p0nal0b","slide":1,"text":"安全可控","textPreview":"安全可控","textChars":4,"textLines":1,"bbox":[886,254,250,48]}
+{"kind":"textbox","id":"sh/nqto3q1w","slide":1,"text":"可解释","textPreview":"可解释","textChars":3,"textLines":1,"bbox":[886,323,250,48]}
+{"kind":"textbox","id":"sh/byxw7y9c","slide":1,"text":"可评测","textPreview":"可评测","textChars":3,"textLines":1,"bbox":[886,392,250,48]}
+{"kind":"textbox","id":"sh/axofyds7","slide":1,"text":"陈俊宇｜个人项目｜2026.06–2026.07","textPreview":"陈俊宇｜个人项目｜2026.06–2026.07","textChars":24,"textLines":1,"bbox":[58,638,620,24]}
+{"kind":"textbox","id":"sh/x0fe98ri","slide":1,"text":"FastAPI · LangChain · SQLite · Pandas · Docker","textPreview":"FastAPI · LangChain · SQLite · Pandas · Docker","textChars":46,"textLines":1,"bbox":[727,638,455,24]}
+{"kind":"notes","id":"nt/jate7n","slide":1,"text":"开场不要先报技术栈。先用一句话说明：我做的是一个本地多表数据分析智能体，重点解决大模型何时调用数据工具、如何限制工具权限，以及怎样安全执行模型生成的 SQL 和 Python。项目目标可以概括为安全可控、过程可解释、结果可评测。全程大约六到八分钟。"}
+{"kind":"slide","id":"sl/ny6ldr","slide":2,"title":"DATA ANALYSE AGENT","textShapes":20}
+{"kind":"textbox","id":"sh/dczqlwb2","slide":2,"text":"DATA ANALYSE AGENT","textPreview":"DATA ANALYSE AGENT","textChars":18,"textLines":1,"bbox":[42,30,300,24]}
+{"kind":"textbox","id":"sh/q98ra1sb","slide":2,"text":"难点不是生成 SQL，而是让 Agent 受控地使用工具","textPreview":"难点不是生成 SQL，而是让 Agent 受控地使用工具","textChars":28,"textLines":1,"bbox":[42,62,1120,62]}
+{"kind":"textbox","id":"sh/bah8j6tw","slide":2,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[1184,36,54,24]}
+{"kind":"shape","id":"sh/0zq9gbad","slide":2,"bbox":[42,126,52,5]}
+{"kind":"textbox","id":"sh/l0jqpgry","slide":2,"text":"普通链路：用户问题 → 大模型 → SQL → 数据库","textPreview":"普通链路：用户问题 → 大模型 → SQL → 数据库","textChars":27,"textLines":1,"bbox":[42,158,780,34]}
+{"kind":"textbox","id":"sh/yd8re1s7","slide":2,"text":"一旦问题、Schema 或执行环境不符合预期，错误会被一路放大。","textPreview":"一旦问题、Schema 或执行环境不符合预期，错误会被一路放大。","textChars":32,"textLines":1,"bbox":[42,197,840,30]}
+{"kind":"shape","id":"sh/zyh8n6ts","slide":2,"bbox":[42,266,567,145]}
+{"kind":"textbox","id":"sh/83a9kbap","slide":2,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[66,288,48,30]}
+{"kind":"textbox","id":"sh/94jqtgru","slide":2,"text":"不了解多表关系","textPreview":"不了解多表关系","textChars":7,"textLines":1,"bbox":[130,286,430,34]}
+{"kind":"textbox","id":"sh/xcrutsj6","slide":2,"text":"表名、字段和主外键容易被猜错","textPreview":"表名、字段和主外键容易被猜错","textChars":14,"textLines":1,"bbox":[130,333,430,46]}
+{"kind":"shape","id":"sh/wbit0n2l","slide":2,"bbox":[651,266,567,145]}
+{"kind":"textbox","id":"sh/ba9cri1g","slide":2,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[675,288,48,30]}
+{"kind":"textbox","id":"sh/a90byxkv","slide":2,"text":"无关问题也调用数据","textPreview":"无关问题也调用数据","textChars":9,"textLines":1,"bbox":[739,286,430,34]}
+{"kind":"textbox","id":"sh/lgbuxcji","slide":2,"text":"例如用电商订单回答股市预测","textPreview":"例如用电商订单回答股市预测","textChars":13,"textLines":1,"bbox":[739,333,430,46]}
+{"kind":"shape","id":"sh/kf2d47ix","slide":2,"bbox":[42,445,567,145]}
+{"kind":"textbox","id":"sh/jetcv21c","slide":2,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[66,467,48,30]}
+{"kind":"textbox","id":"sh/yd0b2x0r","slide":2,"text":"SQL 表达能力有限","textPreview":"SQL 表达能力有限","textChars":10,"textLines":1,"bbox":[130,465,430,34]}
+{"kind":"textbox","id":"sh/1k7ul8jy","slide":2,"text":"聚类、时序和复杂统计需要 Python","textPreview":"聚类、时序和复杂统计需要 Python","textChars":19,"textLines":1,"bbox":[130,512,430,46]}
+{"kind":"shape","id":"sh/0jyts32t","slide":2,"bbox":[651,445,567,145]}
+{"kind":"textbox","id":"sh/sn2t83a9","slide":2,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[675,467,48,30]}
+{"kind":"textbox","id":"sh/dobu18ru","slide":2,"text":"生成代码不可直接信任","textPreview":"生成代码不可直接信任","textChars":10,"textLines":1,"bbox":[739,465,430,34]}
+{"kind":"textbox","id":"sh/q1kb6dsj","slide":2,"text":"可能误读文件、联网或耗尽资源","textPreview":"可能误读文件、联网或耗尽资源","textChars":14,"textLines":1,"bbox":[739,512,430,46]}
+{"kind":"textbox","id":"sh/r2tczi94","slide":2,"text":"设计问题：如何把模型的自由生成，约束为可验证的执行流程？","textPreview":"设计问题：如何把模型的自由生成，约束为可验证的执行流程？","textChars":28,"textLines":1,"bbox":[42,626,1176,34]}
+{"kind":"textbox","id":"sh/0rmdcnal","slide":2,"text":"陈俊宇｜个人项目｜2026.06–2026.07","textPreview":"陈俊宇｜个人项目｜2026.06–2026.07","textChars":24,"textLines":1,"bbox":[42,681,650,18]}
+{"kind":"textbox","id":"sh/1svu5sr6","slide":2,"text":"保研面试项目汇报","textPreview":"保研面试项目汇报","textChars":8,"textLines":1,"bbox":[978,681,260,18]}
+{"kind":"notes","id":"nt/ny6ldr","slide":2,"text":"这一页讲项目动机。普通数据问答往往把自然语言直接交给模型写 SQL，但我在开发中发现四类问题：模型不知道真实表关系；无关问题也会强行分析当前数据；复杂统计不适合只用 SQL；动态 Python 代码又有安全风险。所以项目真正研究的不是 SQL 生成本身，而是如何把模型的自由生成约束成可验证流程。"}
+{"kind":"slide","id":"sl/v5l1wc","slide":3,"title":"DATA ANALYSE AGENT","textShapes":24}
+{"kind":"textbox","id":"sh/qh8z2tkr","slide":3,"text":"DATA ANALYSE AGENT","textPreview":"DATA ANALYSE AGENT","textChars":18,"textLines":1,"bbox":[42,30,300,24]}
+{"kind":"textbox","id":"sh/d4zyx83i","slide":3,"text":"系统把数据底座、控制面和执行面连成一个闭环","textPreview":"系统把数据底座、控制面和执行面连成一个闭环","textChars":21,"textLines":1,"bbox":[42,62,1120,62]}
+{"kind":"textbox","id":"sh/cjqh432x","slide":3,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[1184,36,54,24]}
+{"kind":"shape","id":"sh/z6hgzilo","slide":3,"bbox":[42,126,52,5]}
+{"kind":"textbox","id":"sh/e58z6dk3","slide":3,"text":"数据底座","textPreview":"数据底座","textChars":4,"textLines":1,"bbox":[42,160,110,26]}
+{"kind":"textbox","id":"sh/l8jy183e","slide":3,"text":"CSV / Excel","textPreview":"CSV / Excel","textChars":11,"textLines":1,"bbox":[170,148,145,58]}
+{"kind":"textbox","id":"sh/07ah8n2t","slide":3,"text":"raw / processed","textPreview":"raw / processed","textChars":15,"textLines":1,"bbox":[354,148,170,58]}
+{"kind":"textbox","id":"sh/na103ilk","slide":3,"text":"SQLite + Manifest\nSchema + 关系","textPreview":"SQLite + Manifest | Schema + 关系","textChars":29,"textLines":2,"bbox":[563,139,220,76]}
+{"kind":"shape","id":"sh/m9szadkz","slide":3,"bbox":[315,177,39,0]}
+{"kind":"shape","id":"sh/crqt8vet","slide":3,"bbox":[524,177,39,0]}
+{"kind":"textbox","id":"sh/xszah0ve","slide":3,"text":"控制面","textPreview":"控制面","textChars":3,"textLines":1,"bbox":[42,278,110,26]}
+{"kind":"textbox","id":"sh/qp8b6lwn","slide":3,"text":"用户问题","textPreview":"用户问题","textChars":4,"textLines":1,"bbox":[170,263,145,62]}
+{"kind":"textbox","id":"sh/bqhsfqd8","slide":3,"text":"ScopeRouter\n是否进入分析","textPreview":"ScopeRouter | 是否进入分析","textChars":18,"textLines":2,"bbox":[354,254,170,80]}
+{"kind":"textbox","id":"sh/kfatcvup","slide":3,"text":"Planner\n最多 5 步","textPreview":"Planner | 最多 5 步","textChars":14,"textLines":2,"bbox":[563,254,170,80]}
+{"kind":"textbox","id":"sh/lgjal0va","slide":3,"text":"Step Executor\n按步绑定工具","textPreview":"Step Executor | 按步绑定工具","textChars":20,"textLines":2,"bbox":[772,254,190,80]}
+{"kind":"shape","id":"sh/ytsbalcj","slide":3,"bbox":[315,294,39,0]}
+{"kind":"shape","id":"sh/ze1sjqd4","slide":3,"bbox":[524,294,39,0]}
+{"kind":"shape","id":"sh/8jatgfu1","slide":3,"bbox":[733,294,39,0]}
+{"kind":"textbox","id":"sh/9k3upkv6","slide":3,"text":"执行面","textPreview":"执行面","textChars":3,"textLines":1,"bbox":[42,418,110,26]}
+{"kind":"shape","id":"sh/hof2dgje","slide":3,"bbox":[170,390,670,104]}
+{"kind":"textbox","id":"sh/wn61kbit","slide":3,"text":"按步骤选择 / 组合","textPreview":"按步骤选择 / 组合","textChars":10,"textLines":1,"bbox":[190,402,170,22]}
+{"kind":"textbox","id":"sh/v2xkb618","slide":3,"text":"只读 SQL","textPreview":"只读 SQL","textChars":6,"textLines":1,"bbox":[190,438,175,30]}
+{"kind":"textbox","id":"sh/u14ji10n","slide":3,"text":"基础分析 / 图表","textPreview":"基础分析 / 图表","textChars":9,"textLines":1,"bbox":[400,438,210,30]}
+{"kind":"textbox","id":"sh/5sf2hgja","slide":3,"text":"Docker Python","textPreview":"Docker Python","textChars":13,"textLines":1,"bbox":[640,430,175,24]}
+{"kind":"textbox","id":"sh/4r61obip","slide":3,"text":"复杂分析","textPreview":"复杂分析","textChars":4,"textLines":1,"bbox":[640,458,175,22]}
+{"kind":"shape","id":"sh/jqxkfq14","slide":3,"bbox":[385,432,1,43]}
+{"kind":"shape","id":"sh/ipojml0z","slide":3,"bbox":[625,432,1,43]}
+{"kind":"textbox","id":"sh/lwvi5wj6","slide":3,"text":"Artifact\n摘要与产物","textPreview":"Artifact | 摘要与产物","textChars":14,"textLines":2,"bbox":[875,402,155,80]}
+{"kind":"textbox","id":"sh/0vm1cril","slide":3,"text":"Synthesizer\n最终解释","textPreview":"Synthesizer | 最终解释","textChars":16,"textLines":2,"bbox":[1065,402,160,80]}
+{"kind":"shape","id":"sh/q10zmxgj","slide":3,"bbox":[505,334,362,56]}
+{"kind":"shape","id":"sh/b2tgf2h4","slide":3,"bbox":[840,442,35,0]}
+{"kind":"shape","id":"sh/c32ho7y9","slide":3,"bbox":[1030,442,35,0]}
+{"kind":"shape","id":"sh/d4byhszu","slide":3,"bbox":[439,215,234,39]}
+{"kind":"shape","id":"sh/y5kzqxgf","slide":3,"bbox":[170,535,1015,91]}
+{"kind":"textbox","id":"sh/z6tgj2h0","slide":3,"text":"核心原则","textPreview":"核心原则","textChars":4,"textLines":1,"bbox":[194,558,120,24]}
+{"kind":"textbox","id":"sh/072hs7yl","slide":3,"text":"先判断能不能做，再规划怎么做；每一步只开放必要能力；执行结果先结构化，再交给模型解释。","textPreview":"先判断能不能做，再规划怎么做；每一步只开放必要能力；执行结果先结构化，再交给模型解释。","textChars":43,"textLines":1,"bbox":[315,551,835,42]}
+{"kind":"textbox","id":"sh/l8bylcz6","slide":3,"text":"陈俊宇｜个人项目｜2026.06–2026.07","textPreview":"陈俊宇｜个人项目｜2026.06–2026.07","textChars":24,"textLines":1,"bbox":[42,681,650,18]}
+{"kind":"textbox","id":"sh/e9gfed0b","slide":3,"text":"保研面试项目汇报","textPreview":"保研面试项目汇报","textChars":8,"textLines":1,"bbox":[978,681,260,18]}
+{"kind":"notes","id":"nt/v5l1wc","slide":3,"text":"这是整套系统最重要的一页。先看上方数据底座：上传文件后保留 raw，生成 processed，并物化成独立 SQLite，同时维护 Manifest、真实 Schema 和表关系。用户提问后，ScopeRouter 先判断是否应该使用当前数据集；只有 in_scope 才进入 Planner。Planner 生成结构化步骤，Step Executor 每一步重新绑定允许工具。简单聚合走只读 SQL，基础图表走固定工具，复杂统计才进入 Docker Python。工具结果被转成 Artifact，最后由模型总结。"}
+{"kind":"slide","id":"sl/7dgul6","slide":4,"title":"DATA ANALYSE AGENT","textShapes":22}
+{"kind":"textbox","id":"sh/1s3i5kri","slide":4,"text":"DATA ANALYSE AGENT","textPreview":"DATA ANALYSE AGENT","textChars":18,"textLines":1,"bbox":[42,30,300,24]}
+{"kind":"textbox","id":"sh/epcza5sr","slide":4,"text":"先把文件变成可信的数据集，Agent 才有可靠 Schema","textPreview":"先把文件变成可信的数据集，Agent 才有可靠 Schema","textChars":30,"textLines":1,"bbox":[42,62,1120,62]}
+{"kind":"textbox","id":"sh/fql03a9c","slide":4,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[1184,36,54,24]}
+{"kind":"shape","id":"sh/s3uh8fal","slide":4,"bbox":[42,126,52,5]}
+{"kind":"textbox","id":"sh/t43i10r6","slide":4,"text":"物化链路","textPreview":"物化链路","textChars":4,"textLines":1,"bbox":[42,160,200,30]}
+{"kind":"textbox","id":"sh/61cz65sv","slide":4,"text":"raw/\n原始文件永不修改","textPreview":"raw/ | 原始文件永不修改","textChars":13,"textLines":2,"bbox":[42,218,220,92]}
+{"kind":"textbox","id":"sh/r2l0za9g","slide":4,"text":"processed/\n当前可分析版本","textPreview":"processed/ | 当前可分析版本","textChars":18,"textLines":2,"bbox":[304,218,220,92]}
+{"kind":"textbox","id":"sh/4zah4vap","slide":4,"text":"dataset.sqlite3\n每个数据集独立","textPreview":"dataset.sqlite3 | 每个数据集独立","textChars":23,"textLines":2,"bbox":[566,218,220,92]}
+{"kind":"shape","id":"sh/50jix0ra","slide":4,"bbox":[262,264,42,0]}
+{"kind":"shape","id":"sh/twf61wba","slide":4,"bbox":[524,264,42,0]}
+{"kind":"shape","id":"sh/8vm58rap","slide":4,"bbox":[42,347,744,235]}
+{"kind":"textbox","id":"sh/7udozmt4","slide":4,"text":"Manifest 负责记录","textPreview":"Manifest 负责记录","textChars":13,"textLines":1,"bbox":[70,374,300,30]}
+{"kind":"shape","id":"sh/6t4n6hsj","slide":4,"bbox":[70,425,8,8]}
+{"kind":"textbox","id":"sh/lsvmxwby","slide":4,"text":"字段与类型","textPreview":"字段与类型","textChars":5,"textLines":1,"bbox":[92,420,303,28]}
+{"kind":"textbox","id":"sh/krm54rad","slide":4,"text":"列名、缺失率、样例和统计信息","textPreview":"列名、缺失率、样例和统计信息","textChars":14,"textLines":1,"bbox":[92,451,303,56]}
+{"kind":"shape","id":"sh/jqd4vmts","slide":4,"bbox":[412,425,8,8]}
+{"kind":"textbox","id":"sh/yp4n2hsn","slide":4,"text":"数据治理","textPreview":"数据治理","textChars":4,"textLines":1,"bbox":[434,420,303,28]}
+{"kind":"textbox","id":"sh/xobmtcb2","slide":4,"text":"清洗历史、索引与关系配置","textPreview":"清洗历史、索引与关系配置","textChars":12,"textLines":1,"bbox":[434,451,303,56]}
+{"kind":"shape","id":"sh/wn2507ah","slide":4,"bbox":[70,510,8,8]}
+{"kind":"textbox","id":"sh/o765g7id","slide":4,"text":"可复现结构","textPreview":"可复现结构","textChars":5,"textLines":1,"bbox":[92,505,478,28]}
+{"kind":"textbox","id":"sh/p8f69cjy","slide":4,"text":"schema.sql、indexes.sql 与 SQLite PRAGMA","textPreview":"schema.sql、indexes.sql 与 SQLite PRAGMA","textChars":38,"textLines":1,"bbox":[92,536,478,56]}
+{"kind":"textbox","id":"sh/25oneh07","slide":4,"text":"多表关系不交给模型拍脑袋","textPreview":"多表关系不交给模型拍脑袋","textChars":12,"textLines":1,"bbox":[842,160,360,30]}
+{"kind":"textbox","id":"sh/n6xo721s","slide":4,"text":"确定性候选发现","textPreview":"确定性候选发现","textChars":7,"textLines":1,"bbox":[842,218,335,58]}
+{"kind":"textbox","id":"sh/0365c7i1","slide":4,"text":"LLM 在候选集合中推荐","textPreview":"LLM 在候选集合中推荐","textChars":12,"textLines":1,"bbox":[842,306,335,58]}
+{"kind":"textbox","id":"sh/14fm5cjm","slide":4,"text":"用户确认业务语义","textPreview":"用户确认业务语义","textChars":8,"textLines":1,"bbox":[842,394,335,58]}
+{"kind":"textbox","id":"sh/eh4naxkb","slide":4,"text":"完整性校验并重建 SQLite","textPreview":"完整性校验并重建 SQLite","textChars":15,"textLines":1,"bbox":[842,482,335,58]}
+{"kind":"shape","id":"sh/fix4321g","slide":4,"bbox":[1009.5,276,0,30]}
+{"kind":"shape","id":"sh/kzq5oril","slide":4,"bbox":[1009.5,364,0,30]}
+{"kind":"shape","id":"sh/l0z6hwjq","slide":4,"bbox":[1009.5,452,0,30]}
+{"kind":"textbox","id":"sh/v6503up4","slide":4,"text":"边界：候选发现能降低幻觉，但不能替代领域知识。","textPreview":"边界：候选发现能降低幻觉，但不能替代领域知识。","textChars":23,"textLines":1,"bbox":[842,570,335,42]}
+{"kind":"textbox","id":"sh/u5czupoz","slide":4,"text":"陈俊宇｜个人项目｜2026.06–2026.07","textPreview":"陈俊宇｜个人项目｜2026.06–2026.07","textChars":24,"textLines":1,"bbox":[42,681,650,18]}
+{"kind":"textbox","id":"sh/h8ni547a","slide":4,"text":"保研面试项目汇报","textPreview":"保研面试项目汇报","textChars":8,"textLines":1,"bbox":[978,681,260,18]}
+{"kind":"notes","id":"nt/7dgul6","slide":4,"text":"这一页回答老师可能问的：模型从哪里知道表结构？我的做法不是每次把 CSV 临时读进 Pandas，而是把每个数据集物化成独立 SQLite。raw 永不修改，processed 保存当前版本，Manifest 记录字段、清洗和关系。表关系先用唯一率、字段名和值包含等规则发现候选，LLM 只能在候选集合里推荐，最后必须由用户确认并做完整性校验。这里要主动承认，业务语义不能由统计规则完全替代。"}
+{"kind":"slide","id":"sl/majrfv","slide":5,"title":"DATA ANALYSE AGENT","textShapes":20}
+{"kind":"textbox","id":"sh/wvapkb2d","slide":5,"text":"DATA ANALYSE AGENT","textPreview":"DATA ANALYSE AGENT","textChars":18,"textLines":1,"bbox":[42,30,300,24]}
+{"kind":"textbox","id":"sh/bu18b6ls","slide":5,"text":"Planner 不只拆任务，还决定每一步能看到什么工具","textPreview":"Planner 不只拆任务，还决定每一步能看到什么工具","textChars":27,"textLines":1,"bbox":[42,62,1120,62]}
+{"kind":"textbox","id":"sh/ats7i1k7","slide":5,"text":"05","textPreview":"05","textChars":2,"textLines":1,"bbox":[1184,36,54,24]}
+{"kind":"shape","id":"sh/9sjq9g3m","slide":5,"bbox":[42,126,52,5]}
+{"kind":"shape","id":"sh/orqpgb2h","slide":5,"bbox":[42,154,760,64]}
+{"kind":"textbox","id":"sh/nqh876lw","slide":5,"text":"示例：画出月度销售趋势，并检测异常月份","textPreview":"示例：画出月度销售趋势，并检测异常月份","textChars":19,"textLines":1,"bbox":[68,171,710,30]}
+{"kind":"textbox","id":"sh/mp87e1kb","slide":5,"text":"ScopeRouter\nin_scope","textPreview":"ScopeRouter | in_scope","textChars":20,"textLines":2,"bbox":[42,264,166,82]}
+{"kind":"textbox","id":"sh/14zq5w3q","slide":5,"text":"STEP 1  query\nquery_data\nretry = 2","textPreview":"STEP 1  query | query_data | retry = 2","textChars":34,"textLines":3,"bbox":[254,250,220,110]}
+{"kind":"textbox","id":"sh/03qpcr25","slide":5,"text":"STEP 2  chart\ngenerate_chart\nretry = 2","textPreview":"STEP 2  chart | generate_chart | retry = 2","textChars":38,"textLines":3,"bbox":[514,250,220,110]}
+{"kind":"textbox","id":"sh/2lcfqhgb","slide":5,"text":"STEP 3  advanced\npython_analysis\nretry = 3","textPreview":"STEP 3  advanced | python_analysis | retry = 3","textChars":42,"textLines":3,"bbox":[774,250,220,110]}
+{"kind":"shape","id":"sh/3mlwjmhw","slide":5,"bbox":[208,305,46,0]}
+{"kind":"shape","id":"sh/4nuxsry1","slide":5,"bbox":[474,305,40,0]}
+{"kind":"shape","id":"sh/ponelwzm","slide":5,"bbox":[734,305,40,0]}
+{"kind":"textbox","id":"sh/uxcfmxgz","slide":5,"text":"每个步骤重新 bind_tools","textPreview":"每个步骤重新 bind_tools","textChars":17,"textLines":1,"bbox":[254,386,740,34]}
+{"kind":"textbox","id":"sh/fylwf2hk","slide":5,"text":"模型在 STEP 1 看不到 Python，在 STEP 3 也不需要看到清洗工具。","textPreview":"模型在 STEP 1 看不到 Python，在 STEP 3 也不需要看到清洗工具。","textChars":42,"textLines":1,"bbox":[254,425,740,32]}
+{"kind":"shape","id":"sh/gzuxo7y5","slide":5,"bbox":[1037,154,181,420]}
+{"kind":"textbox","id":"sh/hk3ehczq","slide":5,"text":"硬约束","textPreview":"硬约束","textChars":3,"textLines":1,"bbox":[1062,184,130,30]}
+{"kind":"textbox","id":"sh/6tsvix03","slide":5,"text":"最多 5 步","textPreview":"最多 5 步","textChars":6,"textLines":1,"bbox":[1062,244,130,28]}
+{"kind":"textbox","id":"sh/7u1wr2ho","slide":5,"text":"6 类意图","textPreview":"6 类意图","textChars":5,"textLines":1,"bbox":[1062,303,130,28]}
+{"kind":"textbox","id":"sh/vyhcjyxg","slide":5,"text":"按工具重试","textPreview":"按工具重试","textChars":5,"textLines":1,"bbox":[1062,362,130,28]}
+{"kind":"textbox","id":"sh/ax8bqtwv","slide":5,"text":"清洗需确认","textPreview":"清洗需确认","textChars":5,"textLines":1,"bbox":[1062,421,130,28]}
+{"kind":"textbox","id":"sh/x0zul8f6","slide":5,"text":"越界不规划","textPreview":"越界不规划","textChars":5,"textLines":1,"bbox":[1062,480,130,28]}
+{"kind":"shape","id":"sh/wzqts3e1","slide":5,"bbox":[42,508,952,92]}
+{"kind":"textbox","id":"sh/j2hcnyxc","slide":5,"text":"设计收益","textPreview":"设计收益","textChars":4,"textLines":1,"bbox":[68,532,120,26]}
+{"kind":"textbox","id":"sh/i18budwr","slide":5,"text":"工具选择从“完全自由生成”变成“意图约束下的受控选择”。","textPreview":"工具选择从“完全自由生成”变成“意图约束下的受控选择”。","textChars":28,"textLines":1,"bbox":[188,526,760,40]}
+{"kind":"textbox","id":"sh/54zup8fi","slide":5,"text":"陈俊宇｜个人项目｜2026.06–2026.07","textPreview":"陈俊宇｜个人项目｜2026.06–2026.07","textChars":24,"textLines":1,"bbox":[42,681,650,18]}
+{"kind":"textbox","id":"sh/k3qtw3ex","slide":5,"text":"保研面试项目汇报","textPreview":"保研面试项目汇报","textChars":8,"textLines":1,"bbox":[978,681,260,18]}
+{"kind":"notes","id":"nt/majrfv","slide":5,"text":"ScopeRouter 和 Planner 要区分开讲。ScopeRouter 决定是否进入数据分析；Planner 只处理确认相关的问题。Planner 输出结构化步骤，每步包含意图、目标、允许工具、首选工具、成功标准和重试上限。真正的控制发生在运行时：每一步重新 bind_tools，所以模型只能调用该步白名单工具。清洗还有额外确认闸门。这比在 system prompt 里写一句不要乱用工具更可靠。"}
+{"kind":"slide","id":"sl/hg0d2k","slide":6,"title":"DATA ANALYSE AGENT","textShapes":26}
+{"kind":"textbox","id":"sh/gnu9ob69","slide":6,"text":"DATA ANALYSE AGENT","textPreview":"DATA ANALYSE AGENT","textChars":18,"textLines":1,"bbox":[42,30,300,24]}
+{"kind":"textbox","id":"sh/v2lsf6po","slide":6,"text":"能力越开放，安全边界越要下沉","textPreview":"能力越开放，安全边界越要下沉","textChars":14,"textLines":1,"bbox":[42,62,1120,62]}
+{"kind":"textbox","id":"sh/u1crml83","slide":6,"text":"06","textPreview":"06","textChars":2,"textLines":1,"bbox":[1184,36,54,24]}
+{"kind":"shape","id":"sh/ps3al07q","slide":6,"bbox":[42,126,52,5]}
+{"kind":"textbox","id":"sh/4rutsv65","slide":6,"text":"确定性查询：SQLService","textPreview":"确定性查询：SQLService","textChars":16,"textLines":1,"bbox":[42,158,540,32]}
+{"kind":"textbox","id":"sh/3qlsjqpk","slide":6,"text":"复杂分析：PythonSandboxService","textPreview":"复杂分析：PythonSandboxService","textChars":25,"textLines":1,"bbox":[650,158,568,32]}
+{"kind":"shape","id":"sh/ipcbqloz","slide":6,"bbox":[42,210,540,337]}
+{"kind":"textbox","id":"sh/dwnap07m","slide":6,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[70,242,42,25]}
+{"kind":"textbox","id":"sh/cvetwv61","slide":6,"text":"只允许单条 SELECT / WITH","textPreview":"只允许单条 SELECT / WITH","textChars":19,"textLines":1,"bbox":[124,237,410,32]}
+{"kind":"textbox","id":"sh/ulwradcz","slide":6,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[70,307,42,25]}
+{"kind":"textbox","id":"sh/vmpsjitk","slide":6,"text":"SQLite 只读 URI + query_only","textPreview":"SQLite 只读 URI + query_only","textChars":26,"textLines":1,"bbox":[124,302,410,32]}
+{"kind":"textbox","id":"sh/w7y9cnup","slide":6,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[70,372,42,25]}
+{"kind":"textbox","id":"sh/h87al8ba","slide":6,"text":"authorizer 拦截危险操作","textPreview":"authorizer 拦截危险操作","textChars":17,"textLines":1,"bbox":[124,367,410,32]}
+{"kind":"textbox","id":"sh/i9gredcv","slide":6,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[70,437,42,25]}
+{"kind":"textbox","id":"sh/3apsnitg","slide":6,"text":"超时中断 + 最大返回行数","textPreview":"超时中断 + 最大返回行数","textChars":13,"textLines":1,"bbox":[124,432,410,32]}
+{"kind":"shape","id":"sh/4bytgnu1","slide":6,"bbox":[650,210,568,337]}
+{"kind":"textbox","id":"sh/5c7apsbm","slide":6,"text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[678,242,42,25]}
+{"kind":"textbox","id":"sh/ydcr2tcr","slide":6,"text":"AST 静态检查：禁 socket / requests / subprocess","textPreview":"AST 静态检查：禁 socket / requests / subprocess","textChars":41,"textLines":1,"bbox":[732,237,438,38]}
+{"kind":"textbox","id":"sh/ze5sbydc","slide":6,"text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[678,307,42,25]}
+{"kind":"textbox","id":"sh/ni1ojut4","slide":6,"text":"Docker 禁网，根文件系统与输入只读","textPreview":"Docker 禁网，根文件系统与输入只读","textChars":20,"textLines":1,"bbox":[732,302,438,38]}
+{"kind":"textbox","id":"sh/2xs7apsj","slide":6,"text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[678,372,42,25]}
+{"kind":"textbox","id":"sh/pkj6l4bu","slide":6,"text":"CPU / 内存 / PID / 超时限制","textPreview":"CPU / 内存 / PID / 超时限制","textChars":21,"textLines":1,"bbox":[732,367,438,38]}
+{"kind":"textbox","id":"sh/ojapczap","slide":6,"text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[678,437,42,25]}
+{"kind":"textbox","id":"sh/fuhofats","slide":6,"text":"result.json、日志与图片体积限制","textPreview":"result.json、日志与图片体积限制","textChars":21,"textLines":1,"bbox":[732,432,438,38]}
+{"kind":"shape","id":"sh/et8765s7","slide":6,"bbox":[42,577,1176,76]}
+{"kind":"textbox","id":"sh/1wj6hkby","slide":6,"text":"分层策略","textPreview":"分层策略","textChars":4,"textLines":1,"bbox":[68,600,120,24]}
+{"kind":"textbox","id":"sh/0vap8fad","slide":6,"text":"简单聚合 → SQL　｜　基础图表 → 固定工具　｜　复杂统计 → Docker Python","textPreview":"简单聚合 → SQL　｜　基础图表 → 固定工具　｜　复杂统计 → Docker Python","textChars":47,"textLines":1,"bbox":[190,594,800,34]}
+{"kind":"textbox","id":"sh/zql8re9c","slide":6,"text":"降低风险 ≠ 绝对安全","textPreview":"降低风险 ≠ 绝对安全","textChars":11,"textLines":1,"bbox":[1002,600,190,24]}
+{"kind":"textbox","id":"sh/ypc7i9sr","slide":6,"text":"陈俊宇｜个人项目｜2026.06–2026.07","textPreview":"陈俊宇｜个人项目｜2026.06–2026.07","textChars":24,"textLines":1,"bbox":[42,681,650,18]}
+{"kind":"textbox","id":"sh/gvmlcbq9","slide":6,"text":"保研面试项目汇报","textPreview":"保研面试项目汇报","textChars":8,"textLines":1,"bbox":[978,681,260,18]}
+{"kind":"notes","id":"nt/hg0d2k","slide":6,"text":"安全层分为 SQL 和 Python。SQL 层同时做语法级、连接级和数据库授权级限制，不把正则当成唯一防线。Python 更开放，所以先把 SQL 结果导出为 JSON，再把 JSON 和脚本挂载进一次性 Docker 容器。容器禁网并限制资源，脚本还要通过 AST 静态检查。这里需要准确表述：这些机制是降低风险，不代表面对恶意公网用户时绝对安全；项目当前定位是本地单用户实验系统。"}
+{"kind":"slide","id":"sl/nwd36p","slide":7,"title":"DATA ANALYSE AGENT","textShapes":20}
+{"kind":"textbox","id":"sh/idsvm18b","slide":7,"text":"DATA ANALYSE AGENT","textPreview":"DATA ANALYSE AGENT","textChars":18,"textLines":1,"bbox":[42,30,300,24]}
+{"kind":"textbox","id":"sh/5gjuxg72","slide":7,"text":"失败经验只有被成功修复验证后，才会进入记忆","textPreview":"失败经验只有被成功修复验证后，才会进入记忆","textChars":21,"textLines":1,"bbox":[42,62,1120,62]}
+{"kind":"textbox","id":"sh/kfadobqh","slide":7,"text":"07","textPreview":"07","textChars":2,"textLines":1,"bbox":[1184,36,54,24]}
+{"kind":"shape","id":"sh/7i1czqps","slide":7,"bbox":[42,126,52,5]}
+{"kind":"textbox","id":"sh/6hsvql8n","slide":7,"text":"Dataset Failure Memory","textPreview":"Dataset Failure Memory","textChars":22,"textLines":1,"bbox":[42,158,560,30]}
+{"kind":"textbox","id":"sh/tk3u1g7y","slide":7,"text":"SQL 失败\nno such column","textPreview":"SQL 失败 | no such column","textChars":21,"textLines":2,"bbox":[42,226,185,82]}
+{"kind":"textbox","id":"sh/sjudsvqd","slide":7,"text":"提取反思\n错误类型 + retry hint","textPreview":"提取反思 | 错误类型 + retry hint","textChars":22,"textLines":2,"bbox":[270,218,220,98]}
+{"kind":"textbox","id":"sh/f6lw3qp4","slide":7,"text":"修正后成功","textPreview":"修正后成功","textChars":5,"textLines":1,"bbox":[536,226,180,82]}
+{"kind":"textbox","id":"sh/e5cvul8j","slide":7,"text":"写入数据集记忆\n附 Schema 指纹","textPreview":"写入数据集记忆 | 附 Schema 指纹","textChars":19,"textLines":2,"bbox":[270,374,220,98]}
+{"kind":"shape","id":"sh/gry5obex","slide":7,"bbox":[227,267,43,0]}
+{"kind":"shape","id":"sh/hs7mhgvi","slide":7,"bbox":[490,267,46,0]}
+{"kind":"shape","id":"sh/u5gnmlwr","slide":7,"bbox":[490,308,136,115]}
+{"kind":"shape","id":"sh/fqp4fqdc","slide":7,"bbox":[380,316,0,58]}
+{"kind":"textbox","id":"sh/ovi5svet","slide":7,"text":"下一次同数据集、同 Schema、相关工具调用时，最多注入 5 条经验。","textPreview":"下一次同数据集、同 Schema、相关工具调用时，最多注入 5 条经验。","textChars":36,"textLines":1,"bbox":[42,514,674,42]}
+{"kind":"textbox","id":"sh/pwrml0ve","slide":7,"text":"为什么不在失败时立即记？","textPreview":"为什么不在失败时立即记？","textChars":12,"textLines":1,"bbox":[42,572,270,26]}
+{"kind":"textbox","id":"sh/2tgnqlwn","slide":7,"text":"因为未被成功修复验证的“经验”也可能是错的。","textPreview":"因为未被成功修复验证的“经验”也可能是错的。","textChars":22,"textLines":1,"bbox":[312,570,404,30]}
+{"kind":"shape","id":"sh/3up4jqd8","slide":7,"bbox":[776,158,442,443]}
+{"kind":"textbox","id":"sh/czi5wvu5","slide":7,"text":"Artifact Store","textPreview":"Artifact Store","textChars":14,"textLines":1,"bbox":[808,190,300,30]}
+{"kind":"textbox","id":"sh/d0r6p0va","slide":7,"text":"完整工具结果","textPreview":"完整工具结果","textChars":6,"textLines":1,"bbox":[808,259,160,28]}
+{"kind":"textbox","id":"sh/lgnm90nu","slide":7,"text":"长 JSON · Python 代码 · stdout/stderr","textPreview":"长 JSON · Python 代码 · stdout/stderr","textChars":34,"textLines":1,"bbox":[808,296,350,28]}
+{"kind":"textbox","id":"sh/kfe5gvm9","slide":7,"text":"↓ 结构化压缩","textPreview":"↓ 结构化压缩","textChars":7,"textLines":1,"bbox":[808,350,180,28]}
+{"kind":"textbox","id":"sh/ze547q5o","slide":7,"text":"摘要 + 预览 + 图表 URL","textPreview":"摘要 + 预览 + 图表 URL","textChars":16,"textLines":1,"bbox":[808,398,350,34]}
+{"kind":"textbox","id":"sh/ydwne543","slide":7,"text":"续聊只注入事实索引，避免大结果反复占用上下文。","textPreview":"续聊只注入事实索引，避免大结果反复占用上下文。","textChars":23,"textLines":1,"bbox":[808,461,350,64]}
+{"kind":"textbox","id":"sh/9k7mdknq","slide":7,"text":"记忆解决“别再犯同类错”\nArtifact 解决“别把全部历史再塞一遍”","textPreview":"记忆解决“别再犯同类错” | Artifact 解决“别把全部历史再塞一遍”","textChars":36,"textLines":2,"bbox":[808,536,360,48]}
+{"kind":"textbox","id":"sh/8jy5kfm5","slide":7,"text":"陈俊宇｜个人项目｜2026.06–2026.07","textPreview":"陈俊宇｜个人项目｜2026.06–2026.07","textChars":24,"textLines":1,"bbox":[42,681,650,18]}
+{"kind":"textbox","id":"sh/7ip4ba5k","slide":7,"text":"保研面试项目汇报","textPreview":"保研面试项目汇报","textChars":8,"textLines":1,"bbox":[978,681,260,18]}
+{"kind":"notes","id":"nt/nwd36p","slide":7,"text":"这一页是项目比较有研究味道的部分。SQL 失败后，系统先提取错误类型和重试提示，但不会马上写入长期记忆。只有后续一次调用真正成功，才把失败和成功差异提炼成经验，并附上 Schema 指纹。Schema 变化后旧经验不会继续生效。Artifact Store 解决另一个问题：工具完整结果可能很大，所以续聊只注入摘要、预览和图表 URL，而不是重复塞入完整 JSON、脚本和日志。"}
+{"kind":"slide","id":"sl/yv0d2v","slide":8,"title":"DATA ANALYSE AGENT","textShapes":14}
+{"kind":"textbox","id":"sh/3q9g76ps","slide":8,"text":"DATA ANALYSE AGENT","textPreview":"DATA ANALYSE AGENT","textChars":18,"textLines":1,"bbox":[42,30,300,24]}
+{"kind":"textbox","id":"sh/orihgbqd","slide":8,"text":"评测覆盖关键控制点，但不把回归通过率包装成模型准确率","textPreview":"评测覆盖关键控制点，但不把回归通过率包装成模型准确率","textChars":26,"textLines":1,"bbox":[42,62,1120,62]}
+{"kind":"textbox","id":"sh/psry9w7y","slide":8,"text":"08","textPreview":"08","textChars":2,"textLines":1,"bbox":[1184,36,54,24]}
+{"kind":"shape","id":"sh/qt0zi18j","slide":8,"bbox":[42,126,52,5]}
+{"kind":"shape","id":"sh/bet0b6po","slide":8,"bbox":[42,160,280,178]}
+{"kind":"textbox","id":"sh/cf2hkbq9","slide":8,"text":"31 / 31","textPreview":"31 / 31","textChars":7,"textLines":1,"bbox":[70,202,224,62]}
+{"kind":"textbox","id":"sh/dgbidg7u","slide":8,"text":"确定性评测通过","textPreview":"确定性评测通过","textChars":7,"textLines":1,"bbox":[70,277,224,28]}
+{"kind":"shape","id":"sh/6xgz6h8z","slide":8,"bbox":[42,365,280,178]}
+{"kind":"textbox","id":"sh/7ipgzmpk","slide":8,"text":"69","textPreview":"69","textChars":2,"textLines":1,"bbox":[70,407,224,62]}
+{"kind":"textbox","id":"sh/nyt43u1w","slide":8,"text":"单元测试通过","textPreview":"单元测试通过","textChars":6,"textLines":1,"bbox":[70,482,224,28]}
+{"kind":"shape","id":"sh/p0bm54j2","slide":8,"bbox":[862,160,356,383]}
+{"kind":"textbox","id":"sh/oz2lwz2h","slide":8,"text":"它证明了","textPreview":"它证明了","textChars":4,"textLines":1,"bbox":[890,191,280,30]}
+{"kind":"textbox","id":"sh/fa9kzul0","slide":8,"text":"✓ 路由、策略与安全规则可回归\n✓ SQL / Docker 核心链路可执行\n✓ 迭代后能快速发现行为退化","textPreview":"✓ 路由、策略与安全规则可回归 | ✓ SQL / Docker 核心链路可执行 | ✓ 迭代后能快速发现行为退化","textChars":53,"textLines":3,"bbox":[890,237,286,112]}
+{"kind":"textbox","id":"sh/e903qpkf","slide":8,"text":"它还没有证明","textPreview":"它还没有证明","textChars":6,"textLines":1,"bbox":[890,378,280,30]}
+{"kind":"textbox","id":"sh/1wb214jq","slide":8,"text":"× 真实用户任务准确率达到 100%\n× 面对未知数据集已经充分泛化","textPreview":"× 真实用户任务准确率达到 100% | × 面对未知数据集已经充分泛化","textChars":34,"textLines":2,"bbox":[890,424,286,84]}
+{"kind":"textbox","id":"sh/0bilsz25","slide":8,"text":"评测日期：2026-07-14｜pytest 69 passed","textPreview":"评测日期：2026-07-14｜pytest 69 passed","textChars":32,"textLines":1,"bbox":[365,594,455,24]}
+{"kind":"textbox","id":"sh/r69kvalo","slide":8,"text":"陈俊宇｜个人项目｜2026.06–2026.07","textPreview":"陈俊宇｜个人项目｜2026.06–2026.07","textChars":24,"textLines":1,"bbox":[42,681,650,18]}
+{"kind":"textbox","id":"sh/q503mpk3","slide":8,"text":"保研面试项目汇报","textPreview":"保研面试项目汇报","textChars":8,"textLines":1,"bbox":[978,681,260,18]}
+{"kind":"chart","id":"ch/a1gj6h07","slide":8,"name":"","chartType":"bar","bbox":[365,175,455,390]}
+{"kind":"notes","id":"nt/yv0d2v","slide":8,"text":"评测分成五组：Scope 八条、Planner 七条、Tool Routing 六条、SQL 五条、Python 五条，当前完整模式三十一条全部通过；今天重新运行单元测试是六十九条通过。这里必须强调，三十一条是确定性回归用例，不是说模型在所有问题上准确率百分之百。它证明关键策略和安全边界可以持续验证，但真实泛化还需要更大数据集、真实模型调用和人工标注评测。"}
+{"kind":"slide","id":"sl/61ucnm","slide":9,"title":"DATA ANALYSE AGENT","textShapes":20}
+{"kind":"textbox","id":"sh/i5s3q9w3","slide":9,"text":"DATA ANALYSE AGENT","textPreview":"DATA ANALYSE AGENT","textChars":18,"textLines":1,"bbox":[42,30,300,24]}
+{"kind":"textbox","id":"sh/58321ofu","slide":9,"text":"它已经是可运行原型，也留下了可以继续研究的问题","textPreview":"它已经是可运行原型，也留下了可以继续研究的问题","textChars":23,"textLines":1,"bbox":[42,62,1120,62]}
+{"kind":"textbox","id":"sh/k7ulsje9","slide":9,"text":"09","textPreview":"09","textChars":2,"textLines":1,"bbox":[1184,36,54,24]}
+{"kind":"shape","id":"sh/v21kvexs","slide":9,"bbox":[42,126,52,5]}
+{"kind":"textbox","id":"sh/a1s3m9w7","slide":9,"text":"我完成了什么","textPreview":"我完成了什么","textChars":6,"textLines":1,"bbox":[42,164,520,32]}
+{"kind":"shape","id":"sh/x4j2x4fi","slide":9,"bbox":[42,227,8,8]}
+{"kind":"textbox","id":"sh/w3alozed","slide":9,"text":"安全可控","textPreview":"安全可控","textChars":4,"textLines":1,"bbox":[64,222,498,28]}
+{"kind":"textbox","id":"sh/fy547yxw","slide":9,"text":"Scope、工具白名单、SQL 只读与 Docker 隔离","textPreview":"Scope、工具白名单、SQL 只读与 Docker 隔离","textChars":29,"textLines":1,"bbox":[64,253,498,56]}
+{"kind":"shape","id":"sh/uxc3ytwb","slide":9,"bbox":[42,331,8,8]}
+{"kind":"textbox","id":"sh/ojq5sfat","slide":9,"text":"过程可解释","textPreview":"过程可解释","textChars":5,"textLines":1,"bbox":[64,326,498,28]}
+{"kind":"textbox","id":"sh/pkzml0be","slide":9,"text":"计划、步骤、工具参数、耗时和 Artifact 可追踪","textPreview":"计划、步骤、工具参数、耗时和 Artifact 可追踪","textChars":27,"textLines":1,"bbox":[64,357,498,56]}
+{"kind":"shape","id":"sh/2h8nq5sn","slide":9,"bbox":[42,435,8,8]}
+{"kind":"textbox","id":"sh/3ih4jat8","slide":9,"text":"结果可评测","textPreview":"结果可评测","textChars":5,"textLines":1,"bbox":[64,430,498,28]}
+{"kind":"textbox","id":"sh/gf65ovah","slide":9,"text":"把 Agent 拆成可独立回归的关键控制点","textPreview":"把 Agent 拆成可独立回归的关键控制点","textChars":21,"textLines":1,"bbox":[64,461,498,56]}
+{"kind":"textbox","id":"sh/1gzmh0b2","slide":9,"text":"下一步研究什么","textPreview":"下一步研究什么","textChars":7,"textLines":1,"bbox":[680,164,538,32]}
+{"kind":"shape","id":"sh/edonmlsr","slide":9,"bbox":[680,227,8,8]}
+{"kind":"textbox","id":"sh/fex4fqtc","slide":9,"text":"混合执行计划","textPreview":"混合执行计划","textChars":6,"textLines":1,"bbox":[702,222,516,28]}
+{"kind":"textbox","id":"sh/sr65kval","slide":9,"text":"何时用 SQL、固定工具或 Python，能否自动学习","textPreview":"何时用 SQL、固定工具或 Python，能否自动学习","textChars":27,"textLines":1,"bbox":[702,253,516,56]}
+{"kind":"shape","id":"sh/tcfmdgb6","slide":9,"bbox":[680,331,8,8]}
+{"kind":"textbox","id":"sh/9872hc3u","slide":9,"text":"失败经验有效性","textPreview":"失败经验有效性","textChars":7,"textLines":1,"bbox":[702,326,516,28]}
+{"kind":"textbox","id":"sh/87ylo729","slide":9,"text":"记忆是否真正降低重复错误，如何做消融实验","textPreview":"记忆是否真正降低重复错误，如何做消融实验","textChars":20,"textLines":1,"bbox":[702,357,516,56]}
+{"kind":"shape","id":"sh/76pkf2lo","slide":9,"bbox":[680,435,8,8]}
+{"kind":"textbox","id":"sh/m5g3mhkj","slide":9,"text":"更真实的 Agent 评测","textPreview":"更真实的 Agent 评测","textChars":13,"textLines":1,"bbox":[702,430,516,28]}
+{"kind":"textbox","id":"sh/lk72dc3y","slide":9,"text":"扩充数据集、任务难度、模型对比与人工评价","textPreview":"扩充数据集、任务难度、模型对比与人工评价","textChars":20,"textLines":1,"bbox":[702,461,516,56]}
+{"kind":"shape","id":"sh/kjelk72d","slide":9,"bbox":[42,565,1176,82]}
+{"kind":"textbox","id":"sh/zi5kb2ls","slide":9,"text":"我想研究的不是如何让 Agent 更自由，而是如何让它在明确边界内更可靠。","textPreview":"我想研究的不是如何让 Agent 更自由，而是如何让它在明确边界内更可靠。","textChars":37,"textLines":1,"bbox":[75,588,1110,34]}
+{"kind":"textbox","id":"sh/yhwjix47","slide":9,"text":"陈俊宇｜Data Analyse Agent","textPreview":"陈俊宇｜Data Analyse Agent","textChars":22,"textLines":1,"bbox":[42,681,650,18]}
+{"kind":"textbox","id":"sh/5gr2pw32","slide":9,"text":"保研面试项目汇报","textPreview":"保研面试项目汇报","textChars":8,"textLines":1,"bbox":[978,681,260,18]}
+{"kind":"notes","id":"nt/61ucnm","slide":9,"text":"最后不要只说谢谢。总结三个已经完成的能力：安全可控、过程可解释、结果可评测。然后主动讲三个研究问题：SQL 与 Python 的混合规划能否从规则走向学习；失败记忆是否真的有效，需要怎样做消融；如何建立更接近真实用户任务的评测。最后用一句话收束：我关心的不是让 Agent 更自由，而是让它在明确边界内更可靠。说完停下来，等待老师提问。"}
