@@ -13,6 +13,7 @@ htmlcov/
 data/raw/
 data/processed/
 outputs/
+output/
 app/storage/datasets/*
 !app/storage/datasets/.gitkeep
 app/storage/charts/*
